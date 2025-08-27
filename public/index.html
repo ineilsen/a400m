@@ -1,0 +1,2151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentry AI - Holographic Fleet Monitor [Definitive Fix]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sci-fi-cyan: #00FFFF;
+            --sci-fi-glow: rgba(0, 255, 255, 0.5);
+            --background-dark: #0b0f14;
+        }
+        body { margin: 0; overflow: hidden; font-family: 'Fira Code', monospace; background-color: var(--background-dark); color: #fff; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: grab; }
+        #canvas-container.interactive { cursor: pointer; }
+        #canvas-container:active { cursor: grabbing; }
+        #info-panel {
+            position: absolute; top: 40px; right: 40px; width: 360px; background: rgba(10, 15, 26, 0.8);
+            border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 4px; padding: 24px;
+            backdrop-filter: blur(10px) saturate(120%); -webkit-backdrop-filter: blur(10px) saturate(120%);
+            opacity: 0; transform: scale(0.95) translateX(20px); transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none; color: #E0E0E0;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(0, 255, 255, 0.1);
+        }
+        #info-panel.visible { opacity: 1; transform: scale(1) translateX(0); pointer-events: auto; }
+        #info-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--sci-fi-cyan); }
+        #info-title { font-size: 1.2em; font-weight: 600; color: #fff; text-shadow: 0 0 5px var(--sci-fi-glow); }
+        #info-close { font-size: 1.8em; line-height: 1; cursor: pointer; color: var(--sci-fi-cyan); transition: all 0.2s; }
+        #info-close:hover { color: #fff; transform: rotate(90deg); }
+        #info-status { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.8em; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; border: 1px solid; }
+        .status-Warning { border-color: #F59E0B; color: #F59E0B; text-shadow: 0 0 5px #F59E0B; }
+        .status-Critical { border-color: #EF4444; color: #EF4444; text-shadow: 0 0 5px #EF4444; }
+        .status-Good { border-color: #22C55E; color: #22C55E; text-shadow: 0 0 5px #22C55E; }
+        #info-details-grid { display: grid; grid-template-columns: 140px 1fr; gap: 12px; margin-bottom: 20px; }
+        #info-details-grid .label { color: var(--sci-fi-cyan); } .value { color: #fff; font-weight: 500; }
+        #info-description { font-size: 0.9em; line-height: 1.6; color: #ccc; }
+        #webcam-container { position: absolute; bottom: 20px; right: 20px; width: 240px; height: 180px; border: 2px solid var(--sci-fi-cyan); border-radius: 4px; box-shadow: 0 0 15px var(--sci-fi-glow); overflow: hidden; transition: opacity 0.5s; opacity: 0; pointer-events: none; }
+        #webcam-container.visible { opacity: 1; }
+        #webcam-feed, #overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
+    #control-hint { position: absolute; left: 18px; top: 18px; background: rgba(0,0,0,0.45); color: var(--sci-fi-cyan); padding: 8px 12px; border-radius: 8px; font-size: 13px; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,0.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 40; }
+    /* component list panel */
+    #component-list-panel { position: absolute; left: 18px; top: 110px; width: 300px; max-height: 65vh; overflow: auto; background: linear-gradient(180deg, rgba(2,6,12,0.9), rgba(2,6,12,0.75)); border: 1px solid rgba(0,255,255,0.06); padding: 10px; border-radius: 8px; z-index: 70; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+    #component-list-panel h3 { margin: 0 0 8px 0; font-size: 13px; color: var(--sci-fi-cyan); }
+    .component-item { display:flex; gap:8px; align-items:center; padding:8px; border-radius:6px; cursor:pointer; transition: background 180ms; }
+    .component-item:hover { background: rgba(0,255,255,0.04); }
+    .component-item .dot { width:12px; height:12px; border-radius:50%; box-shadow:0 6px 14px rgba(0,255,255,0.04) inset; }
+    .component-item .title { font-size:13px; color:#dff; font-weight:600; }
+    .component-item .subtitle { font-size:11px; color:#9fe; opacity:0.85; }
+    .component-item.active { outline: 2px solid rgba(0,255,255,0.12); background: linear-gradient(90deg, rgba(0,255,255,0.02), rgba(0,120,160,0.03)); }
+    /* arrow overlay removed */
+    #calibration-overlay { display: none; }
+    #gesture-cursor { position: fixed; width: 28px; height: 28px; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); mix-blend-mode: screen; border-radius:50%; box-shadow:0 8px 24px rgba(0,255,255,0.12); }
+    /* HUD and labels */
+    #mode-badge { position: absolute; left: 18px; top: 60px; background: rgba(0,0,0,0.6); color: #000; padding: 6px 10px; border-radius: 8px; font-weight: 700; z-index: 60; color: #00fef0; box-shadow: 0 6px 20px rgba(0,255,255,0.06); backdrop-filter: blur(6px); }
+    #help-panel { position: absolute; left: 18px; bottom: 18px; width: 320px; background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.6)); padding: 10px 12px; border-radius: 10px; font-size: 13px; z-index: 55; color: #bfeff0; }
+    .marker-label { position: absolute; transform: translate(-50%, -120%); pointer-events: none; white-space: nowrap; padding: 6px 8px; border-radius: 6px; background: rgba(0,0,0,0.6); color: #e6ffff; font-weight:600; font-size:12px; text-shadow:0 2px 8px rgba(0,0,0,0.6); z-index:70; }
+    .marker-glow { filter: blur(6px); opacity: 0.9; }
+    #cal-progress { height: 8px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; margin-top:8px; }
+    #cal-progress > i { display:block; height:100%; width:0%; background: linear-gradient(90deg, rgba(0,255,255,0.9), rgba(0,180,255,0.6)); transition: width 120ms linear; }
+    #fps-counter { position: absolute; right: 18px; top: 18px; color: #0ff; background: rgba(0,0,0,0.5); padding:6px 8px; border-radius:6px; z-index:60; font-family: monospace; }
+    /* Tutorial overlay */
+    #tutorial-overlay { position: fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:120; }
+    #tutorial-overlay .backdrop { position:absolute; inset:0; background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.85)); }
+    #tutorial-card { position:relative; width:640px; max-width:92%; background:rgba(6,10,18,0.95); border-radius:12px; padding:20px; color:#dff; box-shadow:0 20px 50px rgba(0,0,0,0.6); border:1px solid rgba(0,255,255,0.06); z-index:121; }
+    #tutorial-card h2 { margin:0 0 8px 0; color:var(--sci-fi-cyan); }
+    #tutorial-card p { margin:6px 0 12px 0; line-height:1.4; color:#cfe; }
+    #tutorial-controls { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+    .tutorial-btn { background:rgba(0,255,255,0.06); color:#bff; padding:8px 12px; border-radius:8px; border:1px solid rgba(0,255,255,0.06); cursor:pointer; }
+    .tutorial-btn.primary { background:linear-gradient(90deg,#00fef0,#00aaff); color:#002; font-weight:700; }
+    /* pointer demo */
+    #tutorial-pointer { position: absolute; width: 26px; height: 26px; border-radius:50%; background: rgba(0,255,255,0.95); box-shadow:0 8px 20px rgba(0,255,255,0.12); z-index:130; pointer-events:none; display:none; transform: translate(-50%,-50%); }
+    /* Improved help panel (collapsible) */
+    #help-panel { position: absolute; left: 18px; bottom: 18px; width: 320px; z-index: 55; font-size: 13px; color: #bfeff0; }
+    #help-panel .help-header { display:flex; align-items:center; justify-content:space-between; gap:8px; background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.72)); padding:10px 12px; border-radius:10px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); border:1px solid rgba(0,255,255,0.06); cursor:pointer; }
+    #help-panel .help-title { color: var(--sci-fi-cyan); font-weight:700; font-size:14px; }
+    #help-panel .icon-btn { background: transparent; border: none; color: var(--sci-fi-cyan); width: 34px; height: 34px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; }
+    #help-panel .icon-btn svg { transition: transform 220ms cubic-bezier(.2,.9,.2,1); }
+    #help-body { overflow: hidden; border-radius: 8px; transform-origin: top center; box-shadow: 0 8px 30px rgba(0,0,0,0.45); }
+    #help-body .help-content { background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.6)); padding: 12px; border-radius: 0 0 8px 8px; color: #cfe; }
+    .help-line { margin-bottom:8px; line-height:1.45; font-size:13px; }
+    .help-controls { display:flex; gap:8px; align-items:center; margin-top:6px; }
+    .control-label { font-size:12px; color:#9fe; min-width:72px; }
+    .help-cal { margin-top:8px; }
+    .help-links { margin-top:8px; font-size:12px; opacity:0.9; }
+    #help-panel.collapsed .help-body { height: 0px !important; }
+    #help-panel.expanded .help-body { height: auto; }
+    </style>
+</head>
+<body>
+    <div id="component-list-panel"><h3>Components & Health</h3><div id="component-list"></div></div>
+    <!-- Flight selector -->
+    <div id="flight-selector" style="position:fixed;left:50%;top:18px;transform:translateX(-50%);width:360px;background:rgba(2,6,12,0.9);padding:12px;border-radius:8px;z-index:130;display:none;border:1px solid rgba(0,255,255,0.06);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:var(--sci-fi-cyan)"><strong>Flight Selector</strong><button id="close-flight-selector" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--sci-fi-cyan);padding:4px 8px;border-radius:6px;cursor:pointer">Close</button></div>
+        <select id="flight-dropdown" style="width:100%;padding:8px;border-radius:6px;background:#041018;color:#dff;border:1px solid rgba(0,255,255,0.06);">
+        </select>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;"><button id="load-flight" class="tutorial-btn primary">Load</button></div>
+    </div>
+    <!-- arrow overlay removed -->
+    <!-- gesture tuner (temporary debug UI) -->
+    <div id="gesture-tuner" style="position:fixed;left:18px;top:18px;transform:translateY(80px);width:320px;background:rgba(0,0,0,0.6);padding:10px;border-radius:8px;z-index:120;box-shadow:0 12px 40px rgba(0,0,0,0.6);display:none;flex-direction:column;gap:8px;font-size:13px;color:#bfe;">
+        <div style="display:flex;justify-content:space-between;align-items:center"><strong style="color:var(--sci-fi-cyan)">Gesture Tuner</strong><button id="hide-tuner" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--sci-fi-cyan);padding:4px 8px;border-radius:6px;cursor:pointer">Hide</button></div>
+        <label>Zoom Scale <span id="tz-val" style="float:right">12000</span></label>
+        <input id="tz" type="range" min="1000" max="40000" step="250" value="12000">
+        <label>Pinch Enter <span id="pe-val" style="float:right">0.09</span></label>
+        <input id="pe" type="range" min="0.02" max="0.25" step="0.005" value="0.09">
+        <label>Pinch Leave <span id="pl-val" style="float:right">0.12</span></label>
+        <input id="pl" type="range" min="0.03" max="0.35" step="0.005" value="0.12">
+        <label>Sensitivity <span id="sens-val" style="float:right">1.0</span></label>
+        <input id="sens" type="range" min="0.4" max="2.0" step="0.02" value="1.0">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:6px;">
+            <label style="font-size:12px;opacity:0.9;">Precision Mode</label>
+            <input id="precision-toggle" type="checkbox" title="When held via modifier pinch, reduces acceleration for fine control">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+            <button id="learn-cal" class="tutorial-btn">Learn</button>
+        </div>
+    </div>
+    <div id="canvas-container"></div>
+    <div id="mode-badge">Mode: Mouse</div>
+    <div id="fps-counter">FPS: --</div>
+        <div id="help-panel" class="collapsed" aria-expanded="false">
+            <div class="help-header" role="button" tabindex="0" aria-controls="help-body">
+                <div class="help-title">Shortcuts</div>
+                <div class="help-actions">
+                    <button id="help-toggle-btn" class="icon-btn" aria-label="Toggle shortcuts">
+                        <!-- chevron -->
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="help-body" class="help-body">
+                <div class="help-content">
+                    <div class="help-line">
+                        <strong>G</strong> toggle Gesture mode · <strong>C</strong> start/collect Calibration · <strong>D</strong> toggle Debug anchors
+                    </div>
+                    <div class="help-line">
+                        <strong>F</strong> open Flight selector · <strong>T</strong> toggle Gesture Tuner UI · <strong>I</strong> invert gesture X mapping · <strong>Z</strong> toggle invert zoom
+                    </div>
+                    <div class="help-line">
+                        <strong>[</strong>/<strong>]</strong> decrease/increase pitch scale · <strong>,</strong>/<strong>.</strong> decrease/increase yaw scale · <strong>0</strong> reset gesture scales
+                    </div>
+                    <div class="help-line">
+                        <strong>Esc</strong> close overlays / cancel calibration · <strong>←</strong>/<strong>→</strong> tutorial navigation
+                    </div>
+                    <div class="help-controls">
+                        <label class="control-label">Test Mode</label>
+                        <input id="test-mode-toggle" type="checkbox" title="Enable test mode: pixel overlays + 1Hz logging">
+                    </div>
+                    <div class="help-controls">
+                        <label class="control-label">Gesture Debug</label>
+                        <input id="gesture-debug-toggle" type="checkbox" title="Show/Hide gesture debug panel">
+                    </div>
+                    <div id="cal-progress" class="help-cal"><i></i></div>
+                    <div class="help-links">Need a refresher? <a href="#" id="reopen-tour">Show tour</a> · <a href="#" id="list-nodes">List model nodes</a></div>
+                </div>
+            </div>
+        </div>
+    <!-- Tutorial overlay (first-time onboarding) -->
+    <div id="tutorial-overlay">
+        <div class="backdrop"></div>
+        <div id="tutorial-card">
+            <h2>Welcome to Sentry AI Holographic Monitor</h2>
+            <p id="tutorial-text">A quick tour will show core controls: mouse, gestures, calibration, and how to inspect components.</p>
+            <div id="tutorial-progress"></div>
+            <div id="tutorial-controls">
+                <button id="tutorial-skip" class="tutorial-btn">Skip</button>
+                <button id="tutorial-prev" class="tutorial-btn">Previous</button>
+                <button id="tutorial-next" class="tutorial-btn primary">Next</button>
+            </div>
+        </div>
+    </div>
+    <div id="tutorial-pointer"></div>
+    <div id="info-panel">
+        <div id="info-header"><span id="info-title"></span><span id="info-close">×</span></div>
+        <div id="info-status"></div>
+        <div id="info-details-grid">
+            <div class="label">Component:</div><div id="info-component" class="value"></div>
+            <div class="label">Next Maintenance:</div><div id="info-maintenance" class="value"></div>
+            <div class="label">Priority:</div><div id="info-priority" class="value"></div>
+        </div>
+        <p id="info-description"></p>
+    </div>
+    <div id="control-hint">Controls: Mouse — Move & click · Gesture — Pinch to click</div>
+    <!-- Camera zoom slider (controls camera distance only) -->
+    <div id="camera-zoom-ui" style="position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:420px;background:rgba(0,0,0,0.6);padding:10px;border-radius:8px;z-index:200;display:flex;gap:8px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,0.45);">
+        <label style="color:var(--sci-fi-cyan);font-weight:700;margin-right:6px;">Camera</label>
+        <input id="camera-zoom-slider" type="range" min="100" max="60000" step="10" style="flex:1;" />
+        <div id="camera-zoom-val" style="width:86px;text-align:right;color:#bfe;font-size:13px;">--</div>
+    </div>
+    <div id="webcam-container">
+        <video id="webcam-feed" autoplay playsinline></video>
+        <canvas id="overlay-canvas"></canvas>
+    </div>
+    <!-- AI Chat widget (bottom-right, hidden when gesture mode is active) -->
+    <div id="ai-chat" style="position:fixed;right:20px;bottom:20px;width:340px;max-height:420px;background:linear-gradient(180deg,rgba(2,6,12,0.95),rgba(2,6,12,0.9));border-radius:10px;padding:8px;box-shadow:0 18px 50px rgba(0,0,0,0.6);z-index:160;display:none;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.03);">
+            <div style="color:var(--sci-fi-cyan);font-weight:700">AI Assistant</div>
+            <div style="font-size:12px;color:#9fe">Context: <span id="ai-chat-context">None</span></div>
+        </div>
+        <div id="ai-messages" style="padding:8px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:12px;color:#9fe;opacity:0.9">Ask about the selected aircraft or mention a flight id.</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+            <input id="ai-input" type="text" placeholder="Ask about this aircraft..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(0,0,0,0.6);color:#dff;font-family:inherit;" />
+            <button id="ai-send" class="tutorial-btn">Send</button>
+        </div>
+    </div>
+    <!-- Calibration overlay (positioned above webcam) -->
+    <div id="calibration-overlay" style="position:fixed;right:20px;bottom:220px;display:none;align-items:flex-start;justify-content:center;pointer-events:auto;z-index:160;width:280px;">
+        <div style="background:rgba(0,0,0,0.72);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);color:#fff;text-align:center;width:100%;">
+            <h3 style="margin:0 0 6px 0;color:var(--sci-fi-cyan);font-size:14px;">Hand Calibration</h3>
+            <p style="margin:0 0 10px 0;font-size:13px;">Place your pointing finger inside the box shown on the webcam and press <strong>C</strong> to capture several samples.</p>
+            <div id="cal-box" style="width:240px;height:140px;margin:0 auto;border:2px dashed var(--sci-fi-cyan);border-radius:6px;display:block;box-sizing:border-box;">
+                <div style="position:relative;width:100%;height:100%;"></div>
+            </div>
+            <p style="margin-top:8px;font-size:12px;opacity:0.9;">Press <strong>Esc</strong> to cancel.</p>
+        </div>
+    </div>
+
+    <!-- Learn overlay for auto-calibration (countdown, live sparkline, progress) -->
+    <div id="learn-overlay" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;z-index:200;">
+        <div style="width:420px;background:rgba(2,6,12,0.95);padding:16px;border-radius:10px;border:1px solid rgba(0,255,255,0.06);color:#dff;box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong style="color:var(--sci-fi-cyan)">Auto Learn</strong><div id="learn-countdown" style="font-size:14px;opacity:0.9">Ready</div></div>
+            <div style="font-size:13px;color:#bfe;margin-bottom:8px;">Follow the on-screen prompts: slowly sweep, then quickly flick, repeat. We'll learn comfortable sensitivity and smoothing.</div>
+            <canvas id="learn-spark" width="380" height="64" style="background:rgba(0,0,0,0.18);border-radius:6px;display:block;margin:0 auto 8px;border:1px solid rgba(255,255,255,0.03);"></canvas>
+            <div id="learn-progress" style="height:10px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden;">
+                <i style="display:block;height:100%;width:0%;background:linear-gradient(90deg,#00fef0,#00aaff);transition:width 120ms linear;"></i>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:10px;"><button id="cancel-learn" class="tutorial-btn">Cancel</button></div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-root" style="position:fixed;right:18px;top:18px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
+
+    <!-- All Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/TextPlugin.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+
+    <!-- Non-module fallback for test environments (JSDOM) -->
+    <script>
+        (function(){
+            // minimal clearMarkers fallback
+            if (typeof window.clearMarkers !== 'function') {
+                window.clearMarkers = function(){
+                    window.markers = window.markers || [];
+                    window.markerAnchors = window.markerAnchors || [];
+                    window.markerColliders = window.markerColliders || [];
+                    window.markers.length = 0; window.markerAnchors.length = 0; window.markerColliders.length = 0;
+                };
+            }
+
+            if (typeof window.createMarkersForComponents !== 'function') {
+                window.createMarkersForComponents = function(components, maxDim){
+                    // ensure arrays exist
+                    window.markers = window.markers || [];
+                    window.markerAnchors = window.markerAnchors || [];
+                    window.markerColliders = window.markerColliders || [];
+                    // clear any existing markers to match test expectations
+                    try { window.clearMarkers(); } catch(e) { window.markers.length = 0; }
+                    // queue for later
+                    window.pendingMarkerCreate = { components: (components || []).slice(), maxDim };
+                };
+            }
+
+            if (typeof window.loadFlightById !== 'function') {
+                window.loadFlightById = function(id){ return Promise.resolve(); };
+            }
+        })();
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        gsap.registerPlugin(TextPlugin);
+
+    // --- SCENE & RENDERER ---
+        const canvasContainer = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100000);
+        const initialCameraPosition = new THREE.Vector3();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // increase exposure so the lit aircraft appears more prominent against the dark background
+    renderer.toneMappingExposure = 1.25;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        canvasContainer.appendChild(renderer.domElement);
+ 
+    // darker grey background for high contrast and to match UI
+    scene.background = new THREE.Color(0x0b0f14);
+
+    // soft ambient + hemisphere for cool sci-fi rim (increased to make model more visible)
+    const ambient = new THREE.AmbientLight(0x0a1116, 0.9);
+    scene.add(ambient);
+    const hemisphereLight = new THREE.HemisphereLight(0x1b86a8, 0x071018, 1.1);
+    hemisphereLight.position.set(0, 1, 0);
+    scene.add(hemisphereLight);
+
+    // main directional key light (soft shadows) — boosted intensity and slightly shifted for stronger key
+    const dirLight = new THREE.DirectionalLight(0x9feeff, 2.8);
+    dirLight.position.set(4000, 9000, 5000);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048);
+        dirLight.shadow.camera.near = 1;
+        dirLight.shadow.camera.far = 30000;
+        // enlarge orthographic camera for broad shadow coverage (values are generous and later clamped by scene extents)
+        const shCam = dirLight.shadow.camera;
+        shCam.left = -12000; shCam.right = 12000; shCam.top = 12000; shCam.bottom = -12000;
+    scene.add(dirLight);
+
+    // Additional fill and rim lights to make the aircraft stand out from the dark background
+    const fillLightFront = new THREE.PointLight(0xbfeeff, 0.55, 25000);
+    fillLightFront.position.set(0, 3000, 10000); // in front of the model/camera to illuminate details
+    scene.add(fillLightFront);
+
+    const rimLightBack = new THREE.PointLight(0x66ddff, 0.45, 28000);
+    rimLightBack.position.set(-12000, 6000, -10000); // subtle back rim
+    scene.add(rimLightBack);
+
+    // small warm kicker to separate underside details
+    const kicker = new THREE.PointLight(0xffeebb, 0.18, 18000);
+    kicker.position.set(6000, -3000, 2000);
+    scene.add(kicker);
+
+        // subtle starfield as distant points (low opacity)
+        (function addStars(){
+            const starCount = 1200;
+            const positions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                positions[i*3 + 0] = (Math.random() - 0.5) * 30000;
+                positions[i*3 + 1] = (Math.random() * 8000) - 2000;
+                positions[i*3 + 2] = (Math.random() - 0.5) * 30000;
+            }
+            const starsGeo = new THREE.BufferGeometry();
+            starsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const starsMat = new THREE.PointsMaterial({ color: 0x88ddff, size: 8, sizeAttenuation: true, transparent: true, opacity: 0.03, depthWrite: false });
+            const stars = new THREE.Points(starsGeo, starsMat);
+            scene.add(stars);
+        })();
+
+    // subtle depth fog for dark background (very low density)
+    scene.fog = new THREE.FogExp2(0x0b0f14, 0.00012);
+
+        // enable soft shadows on renderer
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // --- CONTROLS ---
+    // Controls: allow rotation via mouse, but disable zoom/pan (zoom handled by slider)
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enableRotate = true;
+    controls.enableZoom = false;
+    controls.enablePan = false;
+        const initialControlsTarget = new THREE.Vector3();
+
+        // --- DATA STRUCTURE ---
+       // componentData will be populated from per-flight JSON loaded from the server before markers are created
+       let componentData = [];
+
+       // helper to load selected flight on startup (synchronous-ish before markers creation)
+       async function loadSelectedFlightOnStartup() {
+           const selected = localStorage.getItem('selectedFlight');
+           if (!selected) return;
+           try {
+               const res = await fetch(`/api/flights/${encodeURIComponent(selected)}`);
+               if (!res.ok) return;
+               const payload = await res.json();
+               componentData = payload.components || [];
+           } catch (e) { console.warn('failed to load selected flight', e); }
+       }
+
+       // helper functions to populate flight selector UI
+       async function loadFlightsList() {
+           try {
+               const res = await fetch('/api/flights');
+               if (!res.ok) return [];
+               const payload = await res.json();
+               return payload.flights || [];
+           } catch (e) { console.warn('failed to load flights', e); return []; }
+       }
+
+       async function loadFlightById(id) {
+           try {
+               const res = await fetch(`/api/flights/${encodeURIComponent(id)}`);
+               if (!res.ok) throw new Error('flight not found');
+               const payload = await res.json();
+               let comps = (payload.components || []);
+
+               // If no components present for this flight, attempt to copy from a template (A400-01)
+               if (!comps || comps.length === 0) {
+                   try {
+                       const tplRes = await fetch('/api/flights/A400-01');
+                       if (tplRes.ok) {
+                           const tpl = await tplRes.json();
+                           const tplComps = tpl.components || [];
+                           if (tplComps && tplComps.length) {
+                               // persist copied components for the selected flight
+                               const savePayload = Object.assign({}, { id: id, displayName: payload.displayName || id, components: tplComps });
+                               const saveRes = await fetch(`/api/flights/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(savePayload) });
+                               if (saveRes.ok) {
+                                   comps = tplComps;
+                               } else {
+                                   console.warn('failed to persist copied components for', id);
+                               }
+                           }
+                       }
+                   } catch (err) { console.warn('template copy failed', err); }
+               }
+
+               componentData = comps;
+               localStorage.setItem('selectedFlight', id);
+               // rebuild markers live without reloading
+               try {
+                   // compute model size for reasonable marker scaling
+                   if (aircraftModel) {
+                       const box = new THREE.Box3().setFromObject(aircraftModel);
+                       const size = box.getSize(new THREE.Vector3());
+                       const maxDim = Math.max(size.x, size.y, size.z);
+                       createMarkersForComponents(componentData, maxDim);
+                   } else {
+                       // queue creation until model ready
+                       pendingMarkerCreate = { components: componentData.slice(), maxDim: DEFAULT_AIRCRAFT_SCALE * 1000 };
+                   }
+               } catch (e) { console.warn('live rebuild failed', e); }
+           } catch (e) { console.warn('load flight failed', e); alert('Failed to load flight: ' + id); }
+       }
+    // expose for testing/programmatic control
+    window.loadFlightById = loadFlightById;
+
+       async function initFlightSelectorUI() {
+           const flights = await loadFlightsList();
+           const dropdown = document.getElementById('flight-dropdown');
+           if (!dropdown) return;
+           dropdown.innerHTML = '';
+           flights.forEach(f => {
+               const opt = document.createElement('option'); opt.value = f.id; opt.innerText = `${f.displayName} (${f.id})`;
+               dropdown.appendChild(opt);
+           });
+           const saved = localStorage.getItem('selectedFlight');
+           if (saved) dropdown.value = saved;
+           document.getElementById('load-flight').addEventListener('click', ()=>{ const id = dropdown.value; if (id) loadFlightById(id); });
+           document.getElementById('close-flight-selector').addEventListener('click', ()=>{ document.getElementById('flight-selector').style.display = 'none'; });
+       }
+
+       // initialize flight selector UI (non-blocking)
+       initFlightSelectorUI().catch(()=>{});
+
+        // attempt to load selected flight before model load finishes
+        (async function(){
+            try { await loadSelectedFlightOnStartup(); } catch(e) { /* ignore */ }
+            // if no flight data was loaded, fetch the master flights list and use the first flight's components
+            async function loadDefaultFlightIfEmpty() {
+                if (componentData && componentData.length) return;
+                try {
+                    const res = await fetch('/api/flights');
+                    if (!res.ok) return;
+                    const payload = await res.json();
+                    const first = (payload.flights || [])[0];
+                    if (first && first.components && first.components.length) {
+                        componentData = first.components;
+                        // ensure selector UI shows the first flight as selected
+                        try { const dd = document.getElementById('flight-dropdown'); if (dd) dd.value = first.id; } catch(e){}
+                    }
+                } catch (e) { console.warn('failed to load default flight', e); }
+            }
+            try { await loadDefaultFlightIfEmpty(); } catch(e){}
+        })();
+    // default visual scale for the aircraft model (tweak to make model larger/smaller)
+    const DEFAULT_AIRCRAFT_SCALE = 4.5;
+    // When true the on-screen slider is the only way to change camera distance/zoom.
+    const SLIDER_ONLY_CAMERA = true;
+        
+        // --- INTERACTIVE ELEMENTS ---
+    let aircraftModel, markers = [], markerAnchors = [], markerColliders = [], hoveredObject = null, selectedObject = null, pendingMarkerCreate = null;
+        const statusColors = { 'Good': '#22C55E', 'Warning': '#F59E0B', 'Critical': '#EF4444' };
+        
+    function createScannerTexture(color) {
+            // smaller canvas so the sprite texture is less visually large
+            const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d'); const texture = new THREE.CanvasTexture(canvas);
+            let rotation = 0;
+            function animateScanner() {
+                rotation += 0.06;
+                ctx.clearRect(0, 0, 64, 64);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 4;
+                const pulse = Math.sin(Date.now() * 0.006) * 2 + 26;
+                ctx.beginPath(); ctx.arc(32, 32, pulse, 0, 2 * Math.PI); ctx.stroke();
+                ctx.save(); ctx.translate(32, 32); ctx.rotate(rotation);
+                ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.moveTo(0, -10); ctx.lineTo(0, 10);
+                ctx.stroke(); ctx.restore(); texture.needsUpdate = true;
+            }
+            return { texture, animate: animateScanner };
+        }
+
+        // Clear all markers, anchors, colliders, and DOM labels
+        function clearMarkers() {
+            markers.forEach(m => {
+                try { if (m.parent) m.parent.remove(m); } catch(e){}
+                try { if (m.material && m.material.map) m.material.map.dispose(); } catch(e){}
+                try { if (m.material) m.material.dispose(); } catch(e){}
+                try { if (m.userData && m.userData.labelEl && m.userData.labelEl.parentNode) m.userData.labelEl.parentNode.removeChild(m.userData.labelEl); } catch(e){}
+            });
+            markerAnchors.forEach(a => { try { if (a.parent) a.parent.remove(a); } catch(e){} });
+            markerColliders.forEach(c => { try { if (c.parent) c.parent.remove(c); } catch(e){}; try { if (c.geometry) c.geometry.dispose(); } catch(e){}; try { if (c.material) c.material.dispose(); } catch(e){} });
+            markers.length = 0; markerAnchors.length = 0; markerColliders.length = 0;
+        }
+
+        // Create markers from componentData. maxDim used to scale markers reasonably.
+        function createMarkersForComponents(components, maxDim) {
+            if (!aircraftModel) {
+                // queue for later when model is loaded
+                pendingMarkerCreate = { components: components.slice(), maxDim };
+                return;
+            }
+            clearMarkers();
+            components.forEach((data) => {
+                const targetObject = aircraftModel.getObjectByName(data.attachTo);
+                if (!targetObject) return;
+                const { texture, animate } = createScannerTexture(statusColors[data.status]);
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, sizeAttenuation: true });
+                const marker = new THREE.Sprite(material);
+                const baseMarkerSize = Math.max((maxDim * 0.005), 4);
+                const visualMarkerSize = baseMarkerSize * 2;
+                marker.scale.set(visualMarkerSize, visualMarkerSize, 1);
+                marker.userData.baseScale = visualMarkerSize;
+                marker.userData.componentInfo = data;
+                marker.onBeforeRender = animate;
+
+                // normalize offsets to Vector3
+                const mo = data.markerOffset || { x: 0, y: 0, z: 0 };
+                const co = data.cameraOffset || { x: 0, y: 0, z: 0 };
+                data.markerOffset = (mo instanceof THREE.Vector3) ? mo : new THREE.Vector3(mo[0] ?? mo.x ?? 0, mo[1] ?? mo.y ?? 0, mo[2] ?? mo.z ?? 0);
+                data.cameraOffset = (co instanceof THREE.Vector3) ? co : new THREE.Vector3(co[0] ?? co.x ?? 0, co[1] ?? co.y ?? 0, co[2] ?? co.z ?? 0);
+
+                const anchor = new THREE.Object3D(); anchor.position.copy(data.markerOffset);
+                targetObject.add(anchor); markerAnchors.push(anchor);
+
+                const colliderGeom = new THREE.SphereGeometry(1, 8, 8);
+                const colliderMat = new THREE.MeshBasicMaterial({ visible: false });
+                const collider = new THREE.Mesh(colliderGeom, colliderMat);
+                const colliderScale = marker.userData.baseScale * 1.6; collider.scale.set(colliderScale, colliderScale, colliderScale);
+                anchor.add(collider); collider.userData.marker = marker; marker.userData.collider = collider; markerColliders.push(collider);
+
+                const glowCanvas = document.createElement('canvas'); glowCanvas.width = 64; glowCanvas.height = 64;
+                const gctx = glowCanvas.getContext('2d'); gctx.fillStyle = '#00ffff'; gctx.beginPath(); gctx.arc(32,32,18,0,Math.PI*2); gctx.fill();
+                const glowTex = new THREE.CanvasTexture(glowCanvas);
+                const glowMat = new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthTest: false, transparent: true, opacity: 0.9 });
+                const glow = new THREE.Sprite(glowMat); glow.scale.set(marker.userData.baseScale * 1.8, marker.userData.baseScale * 1.8, 1);
+
+                const ringCanvas = document.createElement('canvas'); ringCanvas.width = 128; ringCanvas.height = 128;
+                const rctx = ringCanvas.getContext('2d'); rctx.clearRect(0,0,128,128); rctx.strokeStyle = 'rgba(0,255,255,0.85)'; rctx.lineWidth = 6; rctx.beginPath(); rctx.arc(64,64,44,0,Math.PI*2); rctx.stroke();
+                const ringTex = new THREE.CanvasTexture(ringCanvas);
+                const ringMat = new THREE.SpriteMaterial({ map: ringTex, transparent: true, opacity: 0.0, depthTest: false });
+                const ring = new THREE.Sprite(ringMat); ring.scale.set(marker.userData.baseScale * 3.2, marker.userData.baseScale * 3.2, 1);
+
+                scene.add(marker); marker.userData.anchor = anchor; markers.push(marker);
+                anchor.add(glow); anchor.add(ring);
+
+                const label = document.createElement('div'); label.className = 'marker-label'; label.innerText = data.displayName; label.style.display = 'none';
+                const teleCanvas = document.createElement('canvas'); teleCanvas.width = 80; teleCanvas.height = 18; teleCanvas.style.display = 'block'; teleCanvas.style.marginTop = '6px'; teleCanvas.style.borderRadius = '3px';
+                label.appendChild(teleCanvas); document.body.appendChild(label);
+                marker.userData.telemetry = { canvas: teleCanvas, ctx: teleCanvas.getContext('2d'), values: [] };
+
+                label.addEventListener('click', (ev) => {
+                    ev.stopPropagation(); const d = marker.userData.componentInfo; const targetPosition = new THREE.Vector3(); marker.userData.anchor.getWorldPosition(targetPosition);
+                    if (SLIDER_ONLY_CAMERA) {
+                        controls.enabled = false; gsap.to(controls.target, { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z, duration: 0.9, ease: 'power3.inOut', onComplete: () => { controls.enabled = true; } });
+                    } else {
+                        controls.enabled = false; gsap.to(camera.position, { x: targetPosition.x + d.cameraOffset.x, y: targetPosition.y + d.cameraOffset.y, z: targetPosition.z + d.cameraOffset.z, duration: 1.2, ease: 'power3.inOut' });
+                        gsap.to(controls.target, { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z, duration: 1.2, ease: 'power3.inOut', onComplete: () => { controls.enabled = true; } });
+                    }
+                });
+
+                marker.userData.glow = glow; marker.userData.labelEl = label; marker.userData.tele = marker.userData.telemetry; marker.userData.selectRing = ring;
+            });
+            try { populateComponentList(); } catch(e) { console.warn('populateComponentList failed', e); }
+            pendingMarkerCreate = null;
+        }
+    // expose for testing
+    window.createMarkersForComponents = createMarkersForComponents;
+
+        // --- MODEL LOADING ---
+        const loader = new GLTFLoader();
+    loader.load('scene.gltf', 
+            (gltf) => {
+                aircraftModel = gltf.scene;
+                scene.add(aircraftModel);
+                // apply global scale so the aircraft appears larger by default
+                try { aircraftModel.scale.multiplyScalar(DEFAULT_AIRCRAFT_SCALE); } catch(e) { /* ignore if not applicable */ }
+                
+                const box = new THREE.Box3().setFromObject(aircraftModel);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
+                controls.target.copy(center);
+                initialControlsTarget.copy(center);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                cameraZ *= 1.5;
+                camera.position.copy(center);
+                camera.position.z += cameraZ;
+                initialCameraPosition.copy(camera.position);
+                controls.maxDistance = size.length() * 2;
+                controls.minDistance = size.length() / 4;
+                controls.update();
+
+                // add a subtle ground ring and contact shadow to visually anchor the model
+                (function addGround() {
+                    // remove existing ground if reloading
+                    if (scene.userData._groundAdded) return;
+                    const ringSize = Math.max(maxDim * 1.4, 1200);
+                    // soft radial gradient canvas texture
+                    const texSize = 1024;
+                    const grdCanvas = document.createElement('canvas'); grdCanvas.width = texSize; grdCanvas.height = texSize;
+                    const gctx = grdCanvas.getContext('2d');
+                    const grad = gctx.createRadialGradient(texSize/2, texSize/2, texSize*0.02, texSize/2, texSize/2, texSize/2);
+                    grad.addColorStop(0, 'rgba(0,255,255,0.14)');
+                    grad.addColorStop(0.4, 'rgba(0,120,150,0.06)');
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+                    gctx.fillStyle = grad; gctx.fillRect(0,0,texSize,texSize);
+                    const groundTex = new THREE.CanvasTexture(grdCanvas);
+                    groundTex.encoding = THREE.sRGBEncoding; groundTex.needsUpdate = true;
+
+                    const groundMat = new THREE.MeshStandardMaterial({ map: groundTex, transparent: true, opacity: 1.0, depthWrite: false });
+                    const groundGeo = new THREE.PlaneGeometry(ringSize, ringSize);
+                    const ground = new THREE.Mesh(groundGeo, groundMat);
+                    ground.rotation.x = -Math.PI / 2;
+                    ground.position.copy(center); ground.position.y = center.y - (size.y * 0.5) - 12;
+                    ground.receiveShadow = true;
+                    scene.add(ground);
+                    scene.userData._groundAdded = true;
+                })();
+
+                // create markers for the currently loaded componentData
+                try { createMarkersForComponents(componentData, maxDim); } catch(e) { console.warn('createMarkersForComponents failed', e); }
+                // if markers were queued while model was loading, process them now
+                if (pendingMarkerCreate) {
+                    try { createMarkersForComponents(pendingMarkerCreate.components, pendingMarkerCreate.maxDim); } catch(e) { console.warn('processing pendingMarkerCreate failed', e); }
+                }
+                // initialize camera slider now that camera/controls have min/max distance set
+                try { initCameraSlider(); } catch(e) { console.warn('initCameraSlider failed', e); }
+            },
+            undefined, (error) => { console.error("MODEL LOADING FAILED:", error); }
+        );
+
+        // Populate component list panel and wire interactions
+        function populateComponentList(){
+            const listRoot = document.getElementById('component-list');
+            // do not use arrow overlay (removed) - keep listRoot only
+            if (!listRoot) return;
+
+            // clear existing
+            listRoot.innerHTML = '';
+
+            function clearHighlights() {
+                markers.forEach(m => {
+                    if (m && m.userData) {
+                        if (m.userData.glow) gsap.to(m.userData.glow.scale, { x: m.userData.baseScale * 1.8, y: m.userData.baseScale * 1.8, duration: 0.18 });
+                        if (m.userData.selectRing) gsap.to(m.userData.selectRing.material, { opacity: 0, duration: 0.18 });
+                        if (m.userData.labelEl) { const _lbl = m.userData.labelEl; gsap.to(_lbl, { opacity: 0, duration: 0.18, onComplete: () => { try { _lbl.style.display = 'none'; } catch(e){} } }); }
+                    }
+                });
+                document.querySelectorAll('.component-item.active').forEach(e=>e.classList.remove('active'));
+            }
+
+            componentData.forEach((c, idx) => {
+                const item = document.createElement('div'); item.className = 'component-item'; item.dataset.cid = c.id;
+                const dot = document.createElement('div'); dot.className = 'dot'; dot.style.background = statusColors[c.status] || '#0ff';
+                const tWrap = document.createElement('div');
+                const title = document.createElement('div'); title.className = 'title'; title.innerText = c.displayName;
+                const sub = document.createElement('div'); sub.className = 'subtitle'; sub.innerText = `${c.componentName} • ${c.maintenanceDue}`;
+                tWrap.appendChild(title); tWrap.appendChild(sub);
+                item.appendChild(dot); item.appendChild(tWrap);
+                listRoot.appendChild(item);
+
+                // pin button
+                const pinBtn = document.createElement('button'); pinBtn.title = 'Pin selection';
+                pinBtn.style.marginLeft = 'auto'; pinBtn.style.background = 'transparent'; pinBtn.style.border = 'none'; pinBtn.style.color = 'rgba(180,255,255,0.9)'; pinBtn.style.cursor = 'pointer';
+                pinBtn.innerText = '📌'; pinBtn.style.fontSize = '14px'; pinBtn.style.opacity = '0.75';
+                item.appendChild(pinBtn);
+
+                let pinned = false;
+
+                pinBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation(); ev.preventDefault();
+                    pinned = !pinned;
+                    pinBtn.style.opacity = pinned ? '1.0' : '0.75';
+                    if (pinned) item.classList.add('pinned'); else item.classList.remove('pinned');
+                });
+
+                item.addEventListener('click', (ev) => {
+                    ev.preventDefault(); ev.stopPropagation();
+                    // if another pinned item exists, do not clear it
+                    document.querySelectorAll('.component-item.pinned').forEach(p => p.classList.remove('pinned'));
+                    // clear non-pinned highlights
+                    markers.forEach(m => {
+                        if (m && m.userData) {
+                            if (m.userData.glow) gsap.to(m.userData.glow.scale, { x: m.userData.baseScale * 1.8, y: m.userData.baseScale * 1.8, duration: 0.18 });
+                            if (m.userData.selectRing) gsap.to(m.userData.selectRing.material, { opacity: 0, duration: 0.18 });
+                            if (m.userData.labelEl) { const _lbl = m.userData.labelEl; gsap.to(_lbl, { opacity: 0, duration: 0.18, onComplete: () => { try { _lbl.style.display = 'none'; } catch(e){} } }); }
+                        }
+                    });
+                    item.classList.add('active');
+                    // find the corresponding marker
+                    const marker = markers.find(m => m.userData && m.userData.componentInfo && m.userData.componentInfo.id === c.id);
+                    if (!marker) {
+                        // item exists but marker not present; show placeholder info
+                        updateInfoPanel(Object.assign({}, c, { displayName: c.displayName + ' (unavailable)', descriptionText: 'Marker not present in loaded model. Check model node names or deploy mapping.' }));
+                        return;
+                    }
+                    // show label and enlarge glow & ring
+                    if (marker.userData.labelEl) { marker.userData.labelEl.style.display = 'block'; gsap.to(marker.userData.labelEl, { opacity: 1, duration: 0.18 }); }
+                    if (marker.userData.glow) gsap.to(marker.userData.glow.scale, { x: marker.userData.baseScale * 3.4, y: marker.userData.baseScale * 3.4, duration: 0.22 });
+                    if (marker.userData.selectRing) gsap.to(marker.userData.selectRing.material, { opacity: 1.0, duration: 0.22 });
+
+                    // focus camera on marker — if SLIDER_ONLY_CAMERA is enabled we only update controls.target (no zoom animation)
+                    const data = marker.userData.componentInfo;
+                    const targetPosition = new THREE.Vector3(); marker.userData.anchor.getWorldPosition(targetPosition);
+                    if (SLIDER_ONLY_CAMERA) {
+                        // gently move controls.target but keep camera distance unchanged
+                        controls.enabled = false;
+                        gsap.to(controls.target, { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z, duration: 0.9, ease: 'power3.inOut', onComplete: () => { controls.enabled = true; } });
+                    } else {
+                        controls.enabled = false;
+                        gsap.to(camera.position, { x: targetPosition.x + data.cameraOffset.x, y: targetPosition.y + data.cameraOffset.y, z: targetPosition.z + data.cameraOffset.z, duration: 1.2, ease: 'power3.inOut' });
+                        gsap.to(controls.target, { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z, duration: 1.2, ease: 'power3.inOut', onComplete: () => { controls.enabled = true; } });
+                    }
+
+                    // show info panel for this component
+                    updateInfoPanel(c);
+
+                    // arrows removed: no visual connector drawn
+                });
+            });
+
+            // clicking on canvas should clear highlights
+            renderer.domElement.addEventListener('click', () => { document.querySelectorAll('.component-item.active').forEach(e=>e.classList.remove('active')); });
+        }
+
+        // --- HYBRID CONTROL & GESTURE LOGIC ---
+        const webcamContainer = document.getElementById('webcam-container');
+        const controlHint = document.getElementById('control-hint');
+        let handTimeout, lastHandPos = null, isPinching = false, wasPinching = false, lastClickTime = 0, fistDetectedTime = 0;
+
+        // controlMode: 'mouse' | 'gesture' — starts in mouse
+        let controlMode = 'mouse';
+        function setControlMode(mode) {
+            if (controlMode === mode) return;
+            controlMode = mode;
+            controlHint.innerText = mode === 'gesture' ? 'Controls: Gesture active — Pinch to click' : 'Controls: Mouse active — Move & click';
+            // update HUD badge
+            const badge = document.getElementById('mode-badge'); if (badge) badge.innerText = 'Mode: ' + (mode === 'gesture' ? 'Gesture' : 'Mouse');
+            // show/hide webcam overlay and enable controls accordingly
+            if (mode === 'gesture') { webcamContainer.classList.add('visible'); controls.enabled = false; }
+            else { webcamContainer.classList.remove('visible'); controls.enabled = true; }
+            // subtle feedback
+            gsap.fromTo(controlHint, { y: -6, opacity: 0.6 }, { y: 0, opacity: 0.95, duration: 0.35, ease: 'power2.out' });
+        }
+
+        function onResults(results) {
+            const webcamCanvas = document.getElementById('overlay-canvas');
+            const webcamCtx = webcamCanvas.getContext('2d');
+            webcamCtx.clearRect(0, 0, webcamCanvas.width, webcamCanvas.height);
+            clearTimeout(handTimeout);
+            
+            // detect a two-thumb precision modifier when two hands are present and thumbs are close
+            window.precisionModifierActive = false;
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length === 2) {
+                try {
+                    const t1 = results.multiHandLandmarks[0][4];
+                    const t2 = results.multiHandLandmarks[1][4];
+                    const d = Math.hypot(t1.x - t2.x, t1.y - t2.y);
+                    if (d < 0.06) window.precisionModifierActive = true;
+                } catch(e) { window.precisionModifierActive = false; }
+            }
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                drawConnectors(webcamCtx, landmarks, HAND_CONNECTIONS, { color: '#00FFFF', lineWidth: 2 });
+                drawLandmarks(webcamCtx, landmarks, { color: '#FFFFFF', radius: 4 });
+
+                // Only process gestures when user has explicitly enabled gesture mode via 'G'
+                if (controlMode === 'gesture') {
+                    webcamContainer.classList.add('visible');
+                    controls.enabled = false;
+                    handleSingleHand(landmarks);
+
+                    // draw calibration guidance overlay on webcam if calibration active
+                    if (calibrationOverlay && calibrationOverlay.style.display === 'flex') {
+                        // cal-box is inside calibration overlay; we draw a guiding dot on the webcam overlay to match index tip
+                        const ix = landmarks[8].x; const iy = landmarks[8].y;
+                        const mirrored = isVideoMirrored();
+                        const drawX = mirrored ? (1 - ix) * webcamCanvas.width : ix * webcamCanvas.width;
+                        const drawY = iy * webcamCanvas.height;
+                        webcamCtx.beginPath(); webcamCtx.arc(drawX, drawY, 8, 0, Math.PI*2); webcamCtx.fillStyle = 'rgba(0,255,255,0.9)'; webcamCtx.fill();
+                        // draw dashed target in upper-right where cal-box is located (no exact overlay mapping, helpful visual)
+                        webcamCtx.strokeStyle = 'rgba(0,255,255,0.35)'; webcamCtx.setLineDash([6,6]); webcamCtx.strokeRect(webcamCanvas.width - 260, 10, 240, 140); webcamCtx.setLineDash([]);
+                    }
+                } else {
+                    // in mouse mode we render the overlay but keep mouse controls active
+                    controls.enabled = true;
+                }
+            } else {
+                handTimeout = setTimeout(() => {
+                    // hide webcam overlay when no hand is detected; do NOT change controlMode automatically
+                    webcamContainer.classList.remove('visible');
+                    // keep controls enabled for mouse mode, keep disabled for explicit gesture mode
+                    controls.enabled = (controlMode !== 'gesture');
+                }, 1500);
+            }
+        }
+
+        function isVideoMirrored(){
+            try{
+                const s = window.getComputedStyle(videoElement);
+                const t = s.transform || s.webkitTransform || '';
+                if (!t || t === 'none') return false;
+                // matrix(a, b, c, d, e, f) -> check a (scaleX) component
+                const m = t.match(/matrix\(([^)]+)\)/);
+                if (m && m[1]){
+                    const parts = m[1].split(',').map(p=>parseFloat(p.trim()));
+                    if (parts.length >= 1) return parts[0] < 0;
+                }
+                // fallback: check inline transform string
+                return (videoElement.style.transform && videoElement.style.transform.includes('scaleX(-1)'));
+            }catch(e){return true;}
+        }
+        
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+    // allow two-hand detection so we can support a two-thumb precision modifier gesture
+    hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+        hands.onResults(onResults);
+        
+        const videoElement = document.getElementById('webcam-feed');
+        const videoCamera = new Camera(videoElement, { onFrame: async () => { await hands.send({image: videoElement}); }, width: 640, height: 480 });
+        videoCamera.start();
+
+        // audio feedback: create a small WebAudio click generator (more reliable than an empty data URI)
+        const clickAudio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='); // keep as fallback
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        function ensureAudioContext() {
+            if (!audioCtx) {
+                try { audioCtx = new AudioContextClass(); } catch (e) { audioCtx = null; }
+            }
+            return audioCtx;
+        }
+
+        function playClick() {
+            const ctx = ensureAudioContext();
+            if (ctx) {
+                try {
+                    if (ctx.state === 'suspended') ctx.resume();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = 1200;
+                    gain.gain.value = 0.0;
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    const now = ctx.currentTime;
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(0.18, now + 0.005);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } catch (err) {
+                    // fall back to HTMLAudioElement if WebAudio fails
+                    try { clickAudio.currentTime = 0; clickAudio.play().catch(()=>{}); } catch(e){}
+                }
+            } else {
+                try { clickAudio.currentTime = 0; clickAudio.play().catch(()=>{}); } catch(e){}
+            }
+        }
+
+        // gesture cursor DOM - create via helper so it's available early and idempotent
+        function ensureGestureCursor() {
+            if (window.gestureCursor) return window.gestureCursor;
+            const el = document.getElementById('gesture-cursor') || document.createElement('div');
+            el.id = 'gesture-cursor';
+            el.style.display = 'none';
+            el.style.position = 'fixed';
+            el.style.width = '26px'; el.style.height = '26px'; el.style.borderRadius = '50%';
+            el.style.margin = '0'; el.style.pointerEvents = 'none';
+            el.style.background = 'radial-gradient(circle at 35% 30%, rgba(0,255,255,0.95), rgba(0,255,255,0.28) 40%, transparent 70%)';
+            el.style.zIndex = '99999';
+            el.style.transform = 'translate(-50%, -50%)';
+            document.body.appendChild(el);
+            window.gestureCursor = el;
+            return el;
+        }
+        const gestureCursor = ensureGestureCursor();
+
+    // reticle for center reference
+    const reticle = document.createElement('div');
+    reticle.id = 'reticle';
+    reticle.style.position = 'absolute'; reticle.style.left = '50%'; reticle.style.top = '50%'; reticle.style.width = '22px'; reticle.style.height = '22px';
+    reticle.style.margin = '-11px 0 0 -11px'; reticle.style.border = '2px solid rgba(0,255,255,0.18)'; reticle.style.borderRadius = '50%'; reticle.style.zIndex = 80; reticle.style.pointerEvents = 'none';
+    document.body.appendChild(reticle);
+
+        // calibration state
+        let calibration = { sx: 0, sy: 0, scaleX: 1, scaleY: 1, calibrated: false };
+        const calibrationOverlay = document.getElementById('calibration-overlay');
+
+        function startCalibration() {
+            calibrationOverlay.style.display = 'flex';
+            setControlMode('gesture');
+            webcamContainer.classList.add('visible');
+        }
+
+        function endCalibration() { calibrationOverlay.style.display = 'none'; calibration.calibrated = true; }
+
+        // collect calibration sample by averaging index tip while user presses C
+        let calibSamples = [];
+
+        window.addEventListener('keydown', (e) => {
+            // don't run calibration shortcut while user is typing in an input/textarea/contentEditable
+            try {
+                const active = document.activeElement;
+                if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable) && e.key !== 'Escape') {
+                    return;
+                }
+            } catch (err) {}
+
+            if (e.key === 'c' || e.key === 'C') {
+                // start calibration capture mode (one-shot: capture next frame's index tip)
+                if (calibrationOverlay.style.display !== 'flex') startCalibration();
+                else {
+                    // capture sample
+                    if (lastHandPos) {
+                        calibSamples.push({ x: lastHandPos.x, y: lastHandPos.y });
+                        if (calibSamples.length >= 6) {
+                            // compute average
+                            const avg = calibSamples.reduce((acc, s) => ({ x: acc.x + s.x, y: acc.y + s.y }), { x: 0, y: 0 });
+                            avg.x /= calibSamples.length; avg.y /= calibSamples.length;
+                            // map to normalized device coords center
+                            calibration.sx = avg.x; calibration.sy = avg.y; calibration.calibrated = true; calibSamples = [];
+                            endCalibration();
+                            console.log('Calibration set:', calibration);
+                        } else {
+                            // prompt user to hold and press C multiple times
+                            console.log('Captured calibration sample', calibSamples.length);
+                        }
+                    }
+                }
+            } else if (e.key === 'Escape') {
+                calibrationOverlay.style.display = 'none'; calibSamples = [];
+            }
+        });
+
+    // Improved Kinect-like gesture handler with smoothing, palm-normal rotation and robust pinch
+    let _smooth = { x: 0.5, y: 0.5, z: 0.0, vx:0, vy:0, vz:0 };
+    // gesture runtime config
+        // gesture runtime config (tunable via on-screen sliders)
+        const gestureConfig = { invertXManual: false, invertZoom: false, zoomScale: 12000, yawScale: 6.0, pitchScale: 2.8, pinchEnter: 0.09, pinchLeave: 0.12, pinchMinHold: 70, cursorSmoothing: 0.28 };
+    let pinchStartZ = null, cameraStartDist = null;
+        const SMOOTH_ALPHA = 0.18; // smoothing factor (lower => smoother, more lag)
+    // time-based smoothing helpers and pinch filters
+    let lastGestureTime = performance.now();
+    let pinchFiltered = 1.0, prevPinchFiltered = 1.0, pinchHoldStart = 0;
+    let cursorSmooth = { x: 0.5, y: 0.5 };
+    // hover hysteresis to avoid flicker
+    let hoveredCandidate = null, hoverCandidateStart = 0;
+    const HOVER_HOLD_MS = 80;
+    // sticky-on-proximity vars: when cursor nears an interactive marker it will "snap" and remain
+    // until moved away beyond a release threshold (px) or after a short lock time.
+    let stickyTarget = null; // { marker, sx, sy }
+    let stickyStart = 0;
+    const STICK_RADIUS_PX = 48; // engage when within this many pixels
+    const STICK_RELEASE_PX = 72; // release when moved beyond this many pixels
+    const STICK_LOCK_MS = 80; // minimum lock-in time before allowing release
+    function handleSingleHand(landmarks) {
+            // allow cursor & hover updates even before the 3D model has loaded.
+            // Only gate aircraft-model-specific transforms further down.
+            const gestureCursorLocal = ensureGestureCursor();
+            // landmarks: normalized coordinates where (0,0) top-left, (1,1) bottom-right
+            const indexTip = landmarks[8], thumbTip = landmarks[4], wrist = landmarks[0];
+
+            // map index tip with smoothing filter (simple exponential smoothing)
+            const rawX = indexTip.x, rawY = indexTip.y, rawZ = wrist.z;
+            // predictive smoothing: velocity estimation
+            _smooth.vx = (_smooth.vx * 0.7) + (rawX - _smooth.x) * 0.3;
+            _smooth.vy = (_smooth.vy * 0.7) + (rawY - _smooth.y) * 0.3;
+            _smooth.vz = (_smooth.vz * 0.7) + (rawZ - _smooth.z) * 0.3;
+            _smooth.x += (_smooth.vx + (rawX - _smooth.x) * SMOOTH_ALPHA) * 0.5;
+            _smooth.y += (_smooth.vy + (rawY - _smooth.y) * SMOOTH_ALPHA) * 0.5;
+            _smooth.z += (_smooth.vz + (rawZ - _smooth.z) * SMOOTH_ALPHA) * 0.5;
+
+            let gx = _smooth.x, gy = _smooth.y;
+            if (calibration.calibrated) {
+                gx = (gx - calibration.sx) * (calibration.scaleX || 1) + 0.5;
+                gy = (gy - calibration.sy) * (calibration.scaleY || 1) + 0.5;
+            }
+
+            // Determine effective flip: MediaPipe/video mirroring XOR manual invert toggle
+            const videoMirrored = isVideoMirrored();
+            const effectiveFlip = Boolean(videoMirrored) !== Boolean(gestureConfig.invertXManual);
+            if (effectiveFlip) gx = 1 - gx;
+
+            // clamp to [0,1]
+            gx = Math.min(0.995, Math.max(0.005, gx));
+            gy = Math.min(0.995, Math.max(0.005, gy));
+
+            // NDC coords for raycasting
+            const gesturePointer = new THREE.Vector2(gx * 2 - 1, -(gy * 2 - 1));
+
+            // update gesture cursor (screen) with eased motion - run even if model not present
+            if (controlMode === 'gesture') {
+                gestureCursorLocal.style.display = 'block';
+                const rect = document.body.getBoundingClientRect();
+                const vw = rect.width || window.innerWidth || document.documentElement.clientWidth;
+                const vh = rect.height || window.innerHeight || document.documentElement.clientHeight;
+                const targetX = gx * vw;
+                const targetY = gy * vh;
+                // directly assign left/top to ensure both axes update reliably
+                try {
+                    // prefer GSAP for performance when available, but still set explicit px values
+                    if (window.gsap && typeof gsap.set === 'function') gsap.set(gestureCursorLocal, { left: targetX, top: targetY });
+                } catch(e) {}
+                gestureCursorLocal.style.left = targetX + 'px';
+                gestureCursorLocal.style.top = targetY + 'px';
+                // expose last computed values on the DOM node for quick inspection
+                try { gestureCursorLocal.dataset._lastTargetX = String(targetX); gestureCursorLocal.dataset._lastTargetY = String(targetY); } catch(e){}
+                try {
+                    // richer debug panel output to trace vertical axis values
+                    gestureDebugPanel.innerText = [
+                        `gesture: visible`,
+                        `raw: ${rawX.toFixed(3)}, ${rawY.toFixed(3)}`,
+                        `smooth: ${_smooth.x.toFixed(3)}, ${_smooth.y.toFixed(3)}`,
+                        `cursorSmooth: ${cursorSmooth.x.toFixed(3)}, ${cursorSmooth.y.toFixed(3)}`,
+                        `coords(gx,gy): ${gx.toFixed(3)}, ${gy.toFixed(3)}`,
+                        `target(px): ${targetX.toFixed(1)}, ${targetY.toFixed(1)} (body.h=${rect.height.toFixed(0)})`,
+                        `mirrored:${videoMirrored?'Y':'N'} invertManual:${gestureConfig.invertXManual?'Y':'N'} pinch:${isPinching?'Y':'N'}`
+                    ].join('\n');
+                } catch(e){}
+                // also emit a console.debug so developers can capture frames in devtools
+                try { console.debug('gesture-frame', { rawX, rawY, smoothX: _smooth.x, smoothY: _smooth.y, gx, gy, targetX, targetY, rectHeight: vh }); } catch(e){}
+
+                // update test-mode pixel overlay crosshair if active
+                try {
+                    if (typeof __testMode !== 'undefined' && __testMode) {
+                        const po = ensurePixelOverlay();
+                        let cross = po.querySelector('.test-cross');
+                        if (!cross) {
+                            cross = document.createElement('div');
+                            cross.className = 'test-cross';
+                            cross.style.position = 'absolute';
+                            cross.style.width = '18px'; cross.style.height = '18px';
+                            cross.style.border = '2px solid rgba(0,255,255,0.95)';
+                            cross.style.borderRadius = '50%';
+                            cross.style.transform = 'translate(-50%, -50%)';
+                            cross.style.pointerEvents = 'none';
+                            cross.style.boxShadow = '0 6px 18px rgba(0,255,255,0.12)';
+                            po.appendChild(cross);
+                        }
+                        cross.style.left = targetX + 'px';
+                        cross.style.top = targetY + 'px';
+                        cross.style.display = 'block';
+                    }
+                } catch(e){}
+            } else { gestureCursorLocal.style.display = 'none'; }
+
+            // improved pinch detection with hysteresis & filtering (low-pass) + hold-to-confirm
+            const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+            // low-pass filter the raw pinch distance to reduce jitter
+            prevPinchFiltered = pinchFiltered;
+            pinchFiltered = pinchFiltered * 0.82 + pinchDist * 0.18;
+            const entering = pinchFiltered < gestureConfig.pinchEnter;
+            const leaving = pinchFiltered > gestureConfig.pinchLeave;
+
+            // hold-based confirmation: only toggle true when filtered pinch is below threshold for pinchMinHold ms
+            if (entering) {
+                if (pinchHoldStart === 0) pinchHoldStart = performance.now();
+                else if (performance.now() - pinchHoldStart > gestureConfig.pinchMinHold) isPinching = true;
+            } else if (leaving) {
+                pinchHoldStart = 0; isPinching = false;
+            }
+
+            // smoothed cursor for improved stability (fractional lerp)
+            cursorSmooth.x += (gx - cursorSmooth.x) * gestureConfig.cursorSmoothing;
+            cursorSmooth.y += (gy - cursorSmooth.y) * gestureConfig.cursorSmoothing;
+            const smoothPointer = new THREE.Vector2(cursorSmooth.x * 2 - 1, -(cursorSmooth.y * 2 - 1));
+
+            // update hover using collider list to avoid ambiguous overlaps
+            raycaster.setFromCamera(smoothPointer, camera);
+            const hits = raycaster.intersectObjects(markerColliders, false);
+            const candidate = hits.length > 0 ? hits[0].object.userData.marker : null;
+            // require a brief hold for hover candidate to avoid flicker
+            if (candidate !== hoveredCandidate) { hoveredCandidate = candidate; hoverCandidateStart = performance.now(); }
+            else {
+                if (hoveredCandidate && (performance.now() - hoverCandidateStart > HOVER_HOLD_MS) && hoveredObject !== hoveredCandidate) {
+                    // commit hover change
+                    if (hoveredObject) {
+                        gsap.to(hoveredObject.scale, { x: hoveredObject.userData.baseScale, y: hoveredObject.userData.baseScale, duration: 0.18 });
+                        if (hoveredObject.userData.glow) gsap.to(hoveredObject.userData.glow.scale, { x: hoveredObject.userData.baseScale * 1.8, y: hoveredObject.userData.baseScale * 1.8, duration: 0.22 });
+                        if (hoveredObject.userData.labelEl) gsap.to(hoveredObject.userData.labelEl, { opacity: 0, duration: 0.22, onComplete: () => hoveredObject.userData.labelEl.style.display = 'none' });
+                    }
+                    hoveredObject = hoveredCandidate;
+                    if (hoveredObject) {
+                        gsap.to(hoveredObject.scale, { x: hoveredObject.userData.baseScale * 1.5, y: hoveredObject.userData.baseScale * 1.5, duration: 0.18 });
+                        if (hoveredObject.userData.glow) gsap.to(hoveredObject.userData.glow.scale, { x: hoveredObject.userData.baseScale * 2.6, y: hoveredObject.userData.baseScale * 2.6, duration: 0.24 });
+                        if (hoveredObject.userData.labelEl) { hoveredObject.userData.labelEl.style.display = 'block'; gsap.fromTo(hoveredObject.userData.labelEl, { opacity: 0 }, { opacity: 1, duration: 0.24 }); }
+                        canvasContainer.classList.add('interactive');
+                    } else { canvasContainer.classList.remove('interactive'); }
+                }
+            }
+
+            // --- Sticky proximity: compute nearest marker in screen space and snap cursor when close ---
+            try {
+                // only do sticky behavior when gesture mode is active
+                if (controlMode === 'gesture' && markerAnchors && markerAnchors.length) {
+                    let best = null; let bestDist = Infinity; let bestPx = { x: 0, y: 0 };
+                    const br = document.body.getBoundingClientRect(); const vw = br.width || window.innerWidth; const vh = br.height || window.innerHeight;
+                    for (let i = 0; i < markerAnchors.length; i++) {
+                        const anc = markerAnchors[i];
+                        if (!anc) continue;
+                        const wp = new THREE.Vector3(); anc.getWorldPosition(wp);
+                        wp.project(camera); // NDC
+                        // only consider visible markers
+                        if (wp.z > 1 || wp.x < -1 || wp.x > 1 || wp.y < -1 || wp.y > 1) continue;
+                        const px = (wp.x + 1) / 2 * vw; const py = (-wp.y + 1) / 2 * vh;
+                        const dx = px - (cursorSmooth.x * vw); const dy = py - (cursorSmooth.y * vh);
+                        const d = Math.hypot(dx, dy);
+                        if (d < bestDist) { bestDist = d; best = anc; bestPx = { x: px, y: py }; }
+                    }
+
+                    // engage sticky when within STICK_RADIUS_PX
+                    if (!stickyTarget && best && bestDist <= STICK_RADIUS_PX) {
+                        // anchors don't store marker directly; find the collider child that references the marker
+                        let markerRef = null;
+                        try {
+                            for (let ci = 0; ci < (best.children || []).length; ci++) {
+                                const ch = best.children[ci];
+                                if (ch && ch.userData && ch.userData.marker) { markerRef = ch.userData.marker; break; }
+                            }
+                        } catch(e) { markerRef = null; }
+                        // fallback: try to find marker by matching anchor reference
+                        if (!markerRef) markerRef = markers.find(m => m.userData && m.userData.anchor === best) || null;
+                        stickyTarget = { marker: markerRef, sx: bestPx.x, sy: bestPx.y, fired: false };
+                        stickyStart = performance.now();
+                        // haptic/visual cue and auto-click on engage
+                        try {
+                            // small audio pulse
+                            playClick();
+                        } catch(e){}
+                        try {
+                            const gc = ensureGestureCursor();
+                            if (window.gsap && typeof gsap.fromTo === 'function') {
+                                gsap.fromTo(gc, { scale: 1 }, { scale: 1.35, duration: 0.12, yoyo: true, repeat: 1, ease: 'power2.out' });
+                            } else {
+                                gc.style.transition = 'transform 120ms ease'; gc.style.transform = 'translate(-50%, -50%) scale(1.15)'; setTimeout(()=>{ try { gc.style.transform = 'translate(-50%, -50%) scale(1)'; } catch(e){} }, 160);
+                            }
+                        } catch(e){}
+                        // schedule the click after brief delay so visual pulse is noticeable
+                        try {
+                            (function(st){
+                                setTimeout(()=>{
+                                    try {
+                                        if (st && !st.fired) {
+                                                    st.fired = true;
+                                                    if (st.marker) {
+                                                        // set hoveredObject to marker sprite so onPointerClick behaves normally
+                                                        hoveredObject = st.marker;
+                                                        try { onPointerClick(); } catch(e) { console.warn('onPointerClick error', e); }
+                                                    }
+                                                }
+                                    } catch(e) { console.warn('auto-click failed', e); }
+                                }, 60);
+                            })(stickyTarget);
+                        } catch(e){}
+                    }
+
+                    // if sticky, check release conditions
+                    if (stickyTarget) {
+                        const curX = cursorSmooth.x * vw; const curY = cursorSmooth.y * vh;
+                        const distNow = Math.hypot(stickyTarget.sx - curX, stickyTarget.sy - curY);
+                        const locked = (performance.now() - stickyStart) < STICK_LOCK_MS;
+                        if (!locked && distNow > STICK_RELEASE_PX) {
+                            // release
+                            stickyTarget = null; stickyStart = 0;
+                        } else {
+                            // while sticky, snap the visible cursor and crosshair to the sticky target
+                            try {
+                                const gc = ensureGestureCursor();
+                                gc.style.left = stickyTarget.sx + 'px';
+                                gc.style.top = stickyTarget.sy + 'px';
+                                // also update overlay crosshair
+                                if (typeof __testMode !== 'undefined' && __testMode) {
+                                    const po = ensurePixelOverlay(); const cross = po.querySelector('.test-cross'); if (cross) { cross.style.left = stickyTarget.sx + 'px'; cross.style.top = stickyTarget.sy + 'px'; }
+                                }
+                            } catch(e){}
+                        }
+                    }
+                }
+            } catch(e) { console.warn('sticky-proximity error', e); }
+
+            // click-on-release behavior: record pinch start, but trigger click only on release to avoid accidental taps
+            if (isPinching && !wasPinching) {
+                // pinch started - capture stable Z and camera dist
+                pinchStartZ = (landmarks[8].z + landmarks[4].z) / 2;
+                cameraStartDist = camera.position.distanceTo(controls.target);
+            }
+            if (!isPinching && wasPinching) {
+                // pinch just released -> treat as click if held long enough and movement small
+                const held = (performance.now() - pinchHoldStart) > gestureConfig.pinchMinHold;
+                const moved = Math.abs(pinchFiltered - prevPinchFiltered) > 0.02; // too jittery
+                if (held && !moved && Date.now() - lastClickTime > 350) {
+                    if (hoveredObject) onPointerClick();
+                    else {
+                        const nearHits = raycaster.intersectObjects(markers, true);
+                        if (nearHits.length) { hoveredObject = nearHits[0].object; onPointerClick(); }
+                    }
+                    lastClickTime = Date.now(); try { playClick(); } catch(e) { try { clickAudio.currentTime = 0; clickAudio.play().catch(()=>{}); } catch(_){} } try { if (navigator.vibrate) navigator.vibrate(30); } catch(e){}
+                }
+                pinchHoldStart = 0;
+            }
+
+            // pinch drag for zoom: only when pinch is held and movement velocity is reasonable
+            if (isPinching && pinchStartZ !== null && cameraStartDist !== null) {
+                if (SLIDER_ONLY_CAMERA) {
+                    // slider controls camera distance; ignore gesture pinch zoom
+                } else {
+                const currentZ = (indexTip.z + thumbTip.z) / 2;
+                let dz = (pinchStartZ - currentZ);
+                if (gestureConfig.invertZoom) dz = -dz;
+                // guard against extreme dz spikes by clamping per-frame change
+                const maxDzPerFrame = 0.02;
+                dz = Math.max(-maxDzPerFrame, Math.min(maxDzPerFrame, dz));
+                // apply a gentler zoom scale for comfortable control
+                const effectiveScale = Math.max(gestureConfig.zoomScale * 0.6, 3000);
+                const newDist = cameraStartDist - dz * effectiveScale;
+                const clamped = Math.max(controls.minDistance, Math.min(controls.maxDistance, newDist));
+                const camDir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+                const targetPos = new THREE.Vector3().copy(controls.target).add(camDir.multiplyScalar(clamped));
+                gsap.to(camera.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 0.12, ease: 'power2.out' });
+                }
+            }
+            if (!isPinching) { pinchStartZ = null; cameraStartDist = null; }
+
+            // apply sensitivity and precision-mode adjustments
+            const effectiveSensitivity = (gestureConfig.sensitivity || 1.0);
+            // precision modifier: if precisionModeEnabled and a two-finger hold or special modifier detected, reduce sensitivity
+            const precisionActive = gestureConfig.precisionModeEnabled && isPinching && (pinchFiltered < (gestureConfig.pinchEnter * 0.9));
+            const finalSensitivity = precisionActive ? Math.max(0.18, effectiveSensitivity * 0.28) : effectiveSensitivity;
+
+            // wrist / palm rotation constrained to X-axis (pitch) only; horizontal movement controls zoom
+                if (lastHandPos) {
+                    const dx = (_smooth.x - lastHandPos.x);
+                    const dy = (_smooth.y - lastHandPos.y);
+                    // only pitch (rotation around camera-right / model X axis)
+                    const pitch = dy * gestureConfig.pitchScale * finalSensitivity;
+                    if (Math.abs(pitch) > 0.001) {
+                        const pivotPoint = controls.target.clone();
+                        // pitch around camera right axis (local)
+                        const camRight = new THREE.Vector3().subVectors(camera.position, controls.target).normalize().cross(new THREE.Vector3(0,1,0)).normalize();
+                        const qPitch = new THREE.Quaternion().setFromAxisAngle(camRight, pitch);
+                        const q = new THREE.Quaternion(); q.copy(qPitch);
+                        aircraftModel.position.sub(pivotPoint); aircraftModel.position.applyQuaternion(q); aircraftModel.position.add(pivotPoint);
+                        aircraftModel.quaternion.premultiply(q);
+                        camera.position.sub(pivotPoint); camera.position.applyQuaternion(q); camera.position.add(pivotPoint);
+                    }
+
+                    // horizontal hand movement -> zoom in/out (mapped to camera forward vector)
+                    const zoomDx = dx * finalSensitivity;
+                    const zoomThreshold = 0.0015; // small deadzone to avoid micro-movements
+                    if (Math.abs(zoomDx) > zoomThreshold) {
+                        if (!SLIDER_ONLY_CAMERA) {
+                            const camDir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+                            // positive dx -> zoom in (hand moved right) -> reduce distance
+                            const delta = -zoomDx * (gestureConfig.zoomXScale || 9000) * (gestureConfig.sensitivity || 1.0);
+                            const currentDist = camera.position.distanceTo(controls.target);
+                            const newDist = currentDist + delta;
+                            const clamped = Math.max(controls.minDistance, Math.min(controls.maxDistance, newDist));
+                            // apply smooth lerp to camera distance rather than GSAP tweening for per-frame stability
+                            const lerpAlpha = 0.28; // frame-based smoothing
+                            const desiredPos = new THREE.Vector3().copy(controls.target).add(camDir.multiplyScalar(clamped));
+                            camera.position.lerp(desiredPos, lerpAlpha);
+                        }
+                    }
+                }
+
+            // quick fist -> reset
+            const palmCenter = landmarks[9];
+            const fingertips = [landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
+            const isFist = fingertips.every(tip => Math.hypot(tip.x - palmCenter.x, tip.y - palmCenter.y) < 0.09);
+            if (isFist) {
+                if (fistDetectedTime === 0) fistDetectedTime = Date.now();
+                if (Date.now() - fistDetectedTime > 700) { resetCamera(); fistDetectedTime = 0; }
+            } else { fistDetectedTime = 0; }
+
+            wasPinching = isPinching;
+            lastHandPos = { x: _smooth.x, y: _smooth.y, z: _smooth.z };
+        }
+
+        // --- INTERACTION & ANIMATION ---
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        const infoPanel = document.getElementById('info-panel');
+        
+        function updateHover(coords) {
+            raycaster.setFromCamera(coords, camera);
+            let newHoveredObject = null;
+            if (controlMode === 'gesture' && markerColliders.length > 0) {
+                const colHits = raycaster.intersectObjects(markerColliders, false);
+                if (colHits.length) newHoveredObject = colHits[0].object.userData.marker;
+            } else {
+                const intersects = raycaster.intersectObjects(markers, false);
+                if (intersects.length) newHoveredObject = intersects[0].object;
+            }
+            if (hoveredObject !== newHoveredObject) {
+                if (hoveredObject) {
+                    gsap.to(hoveredObject.scale, { x: hoveredObject.userData.baseScale, y: hoveredObject.userData.baseScale, duration: 0.2 });
+                    // shrink glow and fade label
+                    if (hoveredObject.userData.glow) gsap.to(hoveredObject.userData.glow.scale, { x: hoveredObject.userData.baseScale * 1.8, y: hoveredObject.userData.baseScale * 1.8, duration: 0.3 });
+                    if (hoveredObject && hoveredObject.userData && hoveredObject.userData.labelEl) { const _lbl = hoveredObject.userData.labelEl; gsap.to(_lbl, { opacity: 0, duration: 0.25, onComplete: () => { try { _lbl.style.display = 'none'; } catch(e){} } }); }
+                }
+                hoveredObject = newHoveredObject;
+                if (hoveredObject) {
+                    // grow modestly on hover (50% larger)
+                    gsap.to(hoveredObject.scale, { x: hoveredObject.userData.baseScale * 1.5, y: hoveredObject.userData.baseScale * 1.5, duration: 0.2 });
+                    // animate glow bigger
+                    if (hoveredObject.userData.glow) gsap.to(hoveredObject.userData.glow.scale, { x: hoveredObject.userData.baseScale * 2.6, y: hoveredObject.userData.baseScale * 2.6, duration: 0.3 });
+                    // show label with fade
+                    if (hoveredObject.userData.labelEl) { hoveredObject.userData.labelEl.style.display = 'block'; gsap.fromTo(hoveredObject.userData.labelEl, { opacity: 0 }, { opacity: 1, duration: 0.28 }); }
+                    canvasContainer.classList.add('interactive');
+                } else {
+                    canvasContainer.classList.remove('interactive');
+                }
+            }
+        }
+        
+        function onPointerMove(event) {
+            if (controls.enabled) {
+                pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+                pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
+                updateHover(pointer);
+            }
+        }
+
+        function onPointerClick() {
+            if (hoveredObject) {
+                const data = hoveredObject.userData.componentInfo;
+                updateInfoPanel(data);
+                // toggle selection ring visual
+                if (selectedObject && selectedObject.userData && selectedObject.userData.selectRing) {
+                    gsap.to(selectedObject.userData.selectRing.material, { opacity: 0.0, duration: 0.25 });
+                }
+                selectedObject = hoveredObject;
+                if (selectedObject && selectedObject.userData && selectedObject.userData.selectRing) {
+                    gsap.to(selectedObject.userData.selectRing.material, { opacity: 1.0, duration: 0.28 });
+                }
+                
+                const targetPosition = new THREE.Vector3();
+                hoveredObject.userData.anchor.getWorldPosition(targetPosition);
+                
+                if (SLIDER_ONLY_CAMERA) {
+                    // only update the focus target; do not move camera position (preserve user slider distance)
+                    controls.enabled = false;
+                    gsap.to(controls.target, { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z, duration: 0.9, ease: 'power3.inOut', onComplete: () => { controls.enabled = true; } });
+                } else {
+                    controls.enabled = false;
+                    gsap.to(camera.position, { x: targetPosition.x + data.cameraOffset.x, y: targetPosition.y + data.cameraOffset.y, z: targetPosition.z + data.cameraOffset.z, duration: 1.5, ease: 'power3.inOut' });
+                    gsap.to(controls.target, { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z, duration: 1.5, ease: 'power3.inOut', onComplete: () => { controls.enabled = true; } });
+                }
+            }
+        }
+
+        function resetCamera() {
+            infoPanel.classList.remove('visible');
+            if (selectedObject && selectedObject.userData && selectedObject.userData.selectRing) gsap.to(selectedObject.userData.selectRing.material, { opacity: 0.0, duration: 0.25 });
+            selectedObject = null;
+            controls.enabled = false;
+            // When using slider-only camera, reset target but do not override camera distance; otherwise restore full camera position
+            if (SLIDER_ONLY_CAMERA) {
+                gsap.to(controls.target, { x: initialControlsTarget.x, y: initialControlsTarget.y, z: initialControlsTarget.z, duration: 0.9, ease: 'power3.inOut', onComplete: () => { controls.enabled = true; }});
+            } else {
+                gsap.to(camera.position, { x: initialCameraPosition.x, y: initialCameraPosition.y, z: initialCameraPosition.z, duration: 1.5, ease: 'power3.inOut' });
+                gsap.to(controls.target, { x: initialControlsTarget.x, y: initialControlsTarget.y, z: initialControlsTarget.z, duration: 1.5, ease: 'power3.inOut', onComplete: () => { controls.enabled = true; }});
+            }
+        }
+
+        function updateInfoPanel(data) {
+            infoPanel.classList.remove('visible');
+            gsap.killTweensOf("#info-panel .value, #info-panel p");
+
+            setTimeout(() => {
+                document.getElementById('info-title').innerText = data.displayName;
+                const statusEl = document.getElementById('info-status');
+                statusEl.innerText = data.status;
+                statusEl.className = 'info-status';
+                statusEl.classList.add(`status-${data.status}`);
+
+                gsap.fromTo("#info-component", {innerText: ""}, { duration: 0.5, text: data.componentName, ease: "none" });
+                gsap.fromTo("#info-maintenance", {innerText: ""}, { duration: 0.5, text: data.maintenanceDue, ease: "none" });
+                gsap.fromTo("#info-priority", {innerText: ""}, { duration: 0.5, text: data.priorityLevel, ease: "none" });
+                gsap.fromTo("#info-description", {innerText: ""}, { duration: 1.0, text: data.descriptionText, ease: "none" });
+
+                infoPanel.classList.add('visible');
+            }, 100);
+        }
+
+        // --- EVENT LISTENERS ---
+        window.addEventListener('pointermove', (e) => { if (controlMode === 'mouse') onPointerMove(e); });
+        window.addEventListener('click', (e) => { if (controlMode === 'mouse') onPointerClick(e); });
+        document.getElementById('info-close').addEventListener('click', (e) => { e.stopPropagation(); resetCamera(); });
+
+        // keyboard toggle (press 'g' to toggle gesture control)
+        window.addEventListener('keydown', (e) => {
+            // If the user is typing in an input/textarea/contentEditable, don't trigger global shortcuts
+            try {
+                const active = document.activeElement;
+                if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable) && e.key !== 'Escape') {
+                    return; // allow normal typing and Escape to still work for overlays
+                }
+            } catch (err) {}
+
+            if (e.key === 'g' || e.key === 'G') {
+                setControlMode(controlMode === 'mouse' ? 'gesture' : 'mouse');
+                if (controlMode === 'gesture') { webcamContainer.classList.add('visible'); controls.enabled = false; } else { webcamContainer.classList.remove('visible'); controls.enabled = true; }
+            } else if (e.key === 'd' || e.key === 'D') {
+                // toggle debug anchors visualization
+                window.__debugAnchors = !window.__debugAnchors;
+                if (window.__debugAnchors) {
+                    // add small axis helpers for each anchor
+                    markerAnchors.forEach(a => { if (!a.userData.axes) { const ax = new THREE.AxesHelper(Math.max(50, camera.position.distanceTo(a.position) * 0.05)); a.add(ax); a.userData.axes = ax; } });
+                } else {
+                    markerAnchors.forEach(a => { if (a.userData.axes) { a.remove(a.userData.axes); a.userData.axes = null; } });
+                }
+            } else if (e.key === 'i' || e.key === 'I') {
+                // toggle manual invert of gesture X mapping
+                gestureConfig.invertXManual = !gestureConfig.invertXManual;
+                try { gestureDebugPanel.innerText = `gesture: invertManual toggled -> ${gestureConfig.invertXManual ? 'ON' : 'OFF'}`; } catch(e){}
+            } else if (e.key === 'z' || e.key === 'Z') {
+                // toggle invert zoom behavior
+                gestureConfig.invertZoom = !gestureConfig.invertZoom;
+                try { gestureDebugPanel.innerText = `gesture: invertZoom toggled -> ${gestureConfig.invertZoom ? 'ON' : 'OFF'}`; } catch(e){}
+            } else if (e.key === '[') {
+                gestureConfig.pitchScale = Math.max(0, gestureConfig.pitchScale - 0.5);
+                try { gestureDebugPanel.innerText = `gesture: pitchScale -> ${gestureConfig.pitchScale.toFixed(2)}`; } catch(e){}
+            } else if (e.key === ']') {
+                gestureConfig.pitchScale = gestureConfig.pitchScale + 0.5;
+                try { gestureDebugPanel.innerText = `gesture: pitchScale -> ${gestureConfig.pitchScale.toFixed(2)}`; } catch(e){}
+            } else if (e.key === ',') {
+                gestureConfig.yawScale = Math.max(0, gestureConfig.yawScale - 0.5);
+                try { gestureDebugPanel.innerText = `gesture: yawScale -> ${gestureConfig.yawScale.toFixed(2)}`; } catch(e){}
+            } else if (e.key === '.') {
+                gestureConfig.yawScale = gestureConfig.yawScale + 0.5;
+                try { gestureDebugPanel.innerText = `gesture: yawScale -> ${gestureConfig.yawScale.toFixed(2)}`; } catch(e){}
+            } else if (e.key === '0') {
+                gestureConfig.yawScale = 6.0; gestureConfig.pitchScale = 2.8; gestureConfig.zoomScale = 12000;
+                try { gestureDebugPanel.innerText = `gesture: scales reset (yaw ${gestureConfig.yawScale}, pitch ${gestureConfig.pitchScale})`; } catch(e){}
+            } else if (e.key === 't' || e.key === 'T') {
+                // toggle visibility of the gesture tuner UI (helpful for live tuning)
+                const tunerEl = document.getElementById('gesture-tuner');
+                if (tunerEl) {
+                    tunerEl.style.display = (tunerEl.style.display === 'none' || tunerEl.style.display === '') ? 'flex' : 'none';
+                }
+            } else if (e.key === 'f' || e.key === 'F') {
+                // toggle flight selector UI
+                const sel = document.getElementById('flight-selector');
+                if (sel) sel.style.display = (sel.style.display === 'none' || sel.style.display === '') ? 'block' : 'none';
+            }
+        });
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- RENDER LOOP ---
+        const worldPosition = new THREE.Vector3();
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            // Synchronize visible markers with their invisible anchors and update DOM labels
+            for (let i = 0; i < markers.length; i++) {
+                const m = markers[i];
+                if (!m) continue;
+                if (m.userData.anchor) {
+                    m.userData.anchor.getWorldPosition(worldPosition);
+                    // if marker is in scene (we added them to scene) copy world position
+                    m.position.copy(worldPosition);
+
+                    // update label position
+                    const labelEl = m.userData.labelEl;
+                    if (labelEl) {
+                        const pos = worldPosition.clone();
+                        pos.project(camera);
+                        const rect = document.body.getBoundingClientRect();
+                        const lx = (pos.x + 1) / 2 * rect.width;
+                        const ly = (-pos.y + 1) / 2 * rect.height;
+                        labelEl.style.left = lx + 'px';
+                        labelEl.style.top = ly + 'px';
+                        // show label only when marker is roughly visible in viewport
+                        const visible = pos.z < 1 && pos.x > -1 && pos.x < 1 && pos.y > -1 && pos.y < 1;
+                        labelEl.style.display = visible ? 'block' : 'none';
+                    }
+                }
+            }
+
+            // telemetry: push synthetic data points and render mini-sparklines
+            for (let i = 0; i < markers.length; i++) {
+                const m = markers[i];
+                if (!m || !m.userData.telemetry) continue;
+                const tele = m.userData.telemetry;
+                // push a synthetic telemetry value (e.g., a fluctuating sensor reading)
+                const v = 50 + Math.round(Math.sin((performance.now() + i * 300) / 600) * 20 + (Math.random() * 6 - 3));
+                tele.values.push(v); if (tele.values.length > 60) tele.values.shift();
+                const ctx = tele.ctx; const cvs = tele.canvas; ctx.clearRect(0,0,cvs.width,cvs.height);
+                // draw sparkline
+                ctx.strokeStyle = '#00fef0'; ctx.lineWidth = 1.4; ctx.beginPath();
+                for (let s = 0; s < tele.values.length; s++) {
+                    const x = (s / (tele.values.length - 1 || 1)) * cvs.width;
+                    const y = cvs.height - (tele.values[s] / 120) * cvs.height;
+                    if (s === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+
+            // reticle subtle pulse
+            try { reticle.style.boxShadow = `0 0 8px rgba(0,255,255,0.08)`; } catch(e){}
+
+            // update calibration progress UI when calibrating
+            try {
+                const calBar = document.querySelector('#cal-progress > i');
+                if (calibrating) {
+                    const pct = Math.min(100, Math.round((calibSamples.length / (CALIB_TARGET || 25)) * 100));
+                    calBar.style.width = pct + '%';
+                } else { calBar.style.width = '0%'; }
+            } catch(e){}
+
+            // simple FPS counter
+            try {
+                if (!window.__lastTick) { window.__lastTick = performance.now(); window.__frameCount = 0; }
+                window.__frameCount++;
+                const now = performance.now();
+                if (now - window.__lastTick > 500) {
+                    const fps = Math.round((window.__frameCount * 1000) / (now - window.__lastTick));
+                    document.getElementById('fps-counter').innerText = 'FPS: ' + fps;
+                    window.__frameCount = 0; window.__lastTick = now;
+                }
+            } catch(e){}
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Camera slider wiring: keeps camera distance controlled by the slider only when SLIDER_ONLY_CAMERA is true
+        function initCameraSlider() {
+            const slider = document.getElementById('camera-zoom-slider');
+            const valEl = document.getElementById('camera-zoom-val');
+            if (!slider || !valEl) return;
+            // helper to compute current distance
+            function currentDist() { return camera.position.distanceTo(controls.target); }
+            // clamp slider to controls min/max
+            slider.min = Math.max(20, controls.minDistance || 20);
+            slider.max = Math.max(slider.min + 10, controls.maxDistance || 60000);
+            slider.step = Math.max(1, Math.round((slider.max - slider.min) / 1000));
+            // set initial slider value from camera
+            slider.value = Math.round(currentDist());
+            valEl.innerText = `${Math.round(slider.value)}m`;
+
+            let sliderActive = false;
+            slider.addEventListener('input', (e) => {
+                const d = Number(e.target.value);
+                valEl.innerText = `${Math.round(d)}m`;
+                // compute new camera position along current camera-forward vector
+                const camDir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+                const newPos = controls.target.clone().add(camDir.multiplyScalar(d));
+                camera.position.copy(newPos);
+                sliderActive = true;
+            });
+
+            // when user stops interacting, ensure controls.update() and enforce slider value matches camera
+            slider.addEventListener('change', (e) => {
+                const d = Number(e.target.value);
+                valEl.innerText = `${Math.round(d)}m`;
+                // broadcast change to other parts of the code
+                try { window.dispatchEvent(new CustomEvent('camera-distance-changed', { detail: { distance: d } })); } catch(e){}
+                sliderActive = false;
+            });
+
+            // keep the slider in-sync in case other code updates camera (should be avoided when SLIDER_ONLY_CAMERA=true)
+            setInterval(() => {
+                try {
+                    if (!sliderActive) {
+                        const d = Math.round(currentDist());
+                        if (Math.abs(Number(slider.value) - d) > 3) {
+                            slider.value = d; valEl.innerText = `${Math.round(d)}m`;
+                        }
+                    }
+                } catch(e){}
+            }, 250);
+        }
+
+        // -----------------------
+        // Tutorial / Onboarding
+        // -----------------------
+        const TUTORIAL_KEY = 'ns_a400_tutorial_seen_v1';
+        const tutorialOverlay = document.getElementById('tutorial-overlay');
+        const tutorialText = document.getElementById('tutorial-text');
+        const tutorialNext = document.getElementById('tutorial-next');
+        const tutorialPrev = document.getElementById('tutorial-prev');
+        const tutorialSkip = document.getElementById('tutorial-skip');
+        const tutorialPointer = document.getElementById('tutorial-pointer');
+
+        // lightweight in-page debug panel for gesture cursor visibility and coordinates
+        let gestureDebugPanel = document.getElementById('gesture-debug');
+        if (!gestureDebugPanel) {
+            gestureDebugPanel = document.createElement('div');
+            gestureDebugPanel.id = 'gesture-debug';
+            gestureDebugPanel.style.position = 'fixed';
+            gestureDebugPanel.style.right = '12px';
+            gestureDebugPanel.style.bottom = '12px';
+            gestureDebugPanel.style.background = 'rgba(0,0,0,0.6)';
+            gestureDebugPanel.style.color = '#0ff';
+            gestureDebugPanel.style.padding = '8px 10px';
+            gestureDebugPanel.style.fontFamily = 'monospace';
+            gestureDebugPanel.style.fontSize = '12px';
+            gestureDebugPanel.style.zIndex = '100000';
+            gestureDebugPanel.style.borderRadius = '6px';
+            gestureDebugPanel.innerText = 'gesture: idle';
+            document.body.appendChild(gestureDebugPanel);
+        }
+
+        // wire gesture tuner controls
+        const tuner = document.getElementById('gesture-tuner');
+        if (tuner) {
+            const tz = document.getElementById('tz'); const tzVal = document.getElementById('tz-val');
+            const pe = document.getElementById('pe'); const peVal = document.getElementById('pe-val');
+            const pl = document.getElementById('pl'); const plVal = document.getElementById('pl-val');
+            tz.addEventListener('input', (e)=>{ gestureConfig.zoomScale = Number(e.target.value); tzVal.innerText = gestureConfig.zoomScale; saveTuner().catch(()=>{}); });
+            pe.addEventListener('input', (e)=>{ gestureConfig.pinchEnter = Number(e.target.value); peVal.innerText = gestureConfig.pinchEnter.toFixed(3); saveTuner().catch(()=>{}); });
+            pl.addEventListener('input', (e)=>{ gestureConfig.pinchLeave = Number(e.target.value); plVal.innerText = gestureConfig.pinchLeave.toFixed(3); saveTuner().catch(()=>{}); });
+            const sens = document.getElementById('sens'); const sensVal = document.getElementById('sens-val');
+            const precisionToggle = document.getElementById('precision-toggle');
+            sens.addEventListener('input', (e)=>{ const v = Number(e.target.value); gestureConfig.sensitivity = v; sensVal.innerText = v.toFixed(2); saveTuner().catch(()=>{}); });
+            precisionToggle.addEventListener('change', (e)=>{ gestureConfig.precisionModeEnabled = e.target.checked; saveTuner().catch(()=>{}); });
+            document.getElementById('learn-cal').addEventListener('click', (ev) => { ev.preventDefault(); enhancedLearn(); });
+            document.getElementById('cancel-learn').addEventListener('click', (ev) => { ev.preventDefault(); cancelLearn(); });
+            
+            // toast helper
+            function showToast(msg, timeout = 3000) {
+                const root = document.getElementById('toast-root');
+                const t = document.createElement('div'); t.style.background = 'linear-gradient(90deg,#00fef0,#00aaff)'; t.style.color = '#002'; t.style.padding = '8px 12px'; t.style.borderRadius = '8px'; t.style.fontWeight = '700'; t.style.pointerEvents = 'auto'; t.innerText = msg;
+                root.appendChild(t);
+                setTimeout(()=>{ try { t.style.opacity = '0'; t.style.transition = 'opacity 300ms'; setTimeout(()=>{ try{ root.removeChild(t); }catch(e){} }, 320); } catch(e){} }, timeout);
+            }
+
+            // enhanced learn routine: collect labelled micro-movements and compute percentile mapping
+            let _learnAbort = false;
+            async function enhancedLearn() {
+                _learnAbort = false;
+                if (controlMode !== 'gesture') setControlMode('gesture');
+                const overlay = document.getElementById('learn-overlay'); const countdownEl = document.getElementById('learn-countdown');
+                const spark = document.getElementById('learn-spark'); const sctx = spark.getContext('2d'); const progBar = document.querySelector('#learn-progress > i');
+                overlay.style.display = 'block';
+                // phases: warmup(2s), slow sweep(4s), fast flick(4s), repeat rounds until convergence (max 3 rounds)
+                const rounds = 3; const phaseDurations = [2000, 4000, 4000];
+                let overallSamples = [];
+                for (let round = 0; round < rounds; round++) {
+                    // each phase
+                    let elapsed = 0; let totalPhase = phaseDurations.reduce((a,b)=>a+b,0);
+                    // sample at ~60Hz via setInterval
+                    const samples = [];
+                    const sampler = setInterval(()=>{ if (lastHandPos) samples.push({ t: performance.now(), x: lastHandPos.x, y: lastHandPos.y }); }, 16);
+                    // run phases sequentially with countdown updates
+                    let pStart = performance.now();
+                    for (let p = 0; p < phaseDurations.length; p++) {
+                        const pd = phaseDurations[p];
+                        const end = performance.now() + pd;
+                        while (performance.now() < end) {
+                            if (_learnAbort) { clearInterval(sampler); overlay.style.display = 'none'; showToast('Learn cancelled', 1400); return; }
+                            // update UI progress and sparkline from samples
+                            const pct = Math.min(99, Math.round(((round * totalPhase) + (performance.now()-pStart)) / (rounds * totalPhase) * 100));
+                            try { progBar.style.width = pct + '%'; } catch(e){}
+                            countdownEl.innerText = `${['Warmup','Slow','Fast'][p]} · ${Math.ceil((end - performance.now())/1000)}s`;
+                            // draw sparkline of instantaneous speed
+                            const speeds = [];
+                            for (let i = 1; i < samples.length; i++) { const dt = (samples[i].t - samples[i-1].t)/1000; if (dt<=0) continue; speeds.push(Math.hypot(samples[i].x - samples[i-1].x, samples[i].y - samples[i-1].y)/dt); }
+                            // draw
+                            sctx.clearRect(0,0,spark.width,spark.height); sctx.strokeStyle = '#00fef0'; sctx.lineWidth = 1.6; sctx.beginPath();
+                            for (let i = 0; i < speeds.length; i++) { const x = (i / (speeds.length-1 || 1)) * spark.width; const y = spark.height - Math.min(1.2, speeds[i]) / 1.2 * spark.height; if (i===0) sctx.moveTo(x,y); else sctx.lineTo(x,y); }
+                            sctx.stroke();
+                            await new Promise(r=>setTimeout(r, 120));
+                        }
+                    }
+                    clearInterval(sampler);
+                    // compute per-sample speeds and aggregate
+                    const roundSpeeds = [];
+                    for (let i = 1; i < samples.length; i++) { const dt = (samples[i].t - samples[i-1].t)/1000; if (dt<=0) continue; roundSpeeds.push(Math.hypot(samples[i].x - samples[i-1].x, samples[i].y - samples[i-1].y)/dt); }
+                    overallSamples = overallSamples.concat(roundSpeeds);
+                    // percentiles
+                    const sorted = overallSamples.slice().sort((a,b)=>a-b);
+                    const p25 = sorted[Math.floor(sorted.length * 0.25)] || 0.01;
+                    const p50 = sorted[Math.floor(sorted.length * 0.50)] || 0.02;
+                    const p75 = sorted[Math.floor(sorted.length * 0.75)] || 0.04;
+                    // map percentiles to sensitivity/smoothing heuristics
+                    const sens = Math.min(2.0, Math.max(0.45, 0.6 + p50 * 2.2));
+                    const smoothing = Math.min(0.5, Math.max(0.09, 0.42 - p50 * 0.12));
+                    // incremental convergence: move current config towards new values
+                    gestureConfig.sensitivity = (gestureConfig.sensitivity || 1.0) * 0.5 + sens * 0.5;
+                    gestureConfig.cursorSmoothing = (gestureConfig.cursorSmoothing || 0.28) * 0.6 + smoothing * 0.4;
+                    // update UI mid-way
+                    try { const sEl = document.getElementById('sens'); const sVal = document.getElementById('sens-val'); if (sEl) { sEl.value = gestureConfig.sensitivity; sVal.innerText = gestureConfig.sensitivity.toFixed(2); } } catch(e){}
+                    // small delay between rounds
+                    await new Promise(r=>setTimeout(r, 300));
+                }
+                overlay.style.display = 'none';
+                saveTuner().catch(()=>{});
+                showToast(`Learning complete — sensitivity ${gestureConfig.sensitivity.toFixed(2)}, smoothing ${gestureConfig.cursorSmoothing.toFixed(3)}`, 3200);
+            }
+
+            function cancelLearn() { _learnAbort = true; }
+            document.getElementById('hide-tuner').addEventListener('click', ()=>{ tuner.style.display = 'none'; });
+
+            // load persisted tuner from backend if available
+            async function loadTuner(){
+                try {
+                    const res = await fetch('/api/tuner');
+                    if (!res.ok) return;
+                    const cfg = await res.json();
+                    if (cfg) {
+                        Object.assign(gestureConfig, cfg);
+                        // update UI inputs
+                        tz.value = gestureConfig.zoomScale; tzVal.innerText = gestureConfig.zoomScale;
+                        pe.value = gestureConfig.pinchEnter; peVal.innerText = gestureConfig.pinchEnter.toFixed(3);
+                        pl.value = gestureConfig.pinchLeave; plVal.innerText = gestureConfig.pinchLeave.toFixed(3);
+                        // sensitivity and precision UI
+                        try { const sEl = document.getElementById('sens'); const sVal = document.getElementById('sens-val'); if (sEl && gestureConfig.sensitivity) { sEl.value = gestureConfig.sensitivity; sVal.innerText = gestureConfig.sensitivity.toFixed(2); } const pEl = document.getElementById('precision-toggle'); if (pEl) pEl.checked = Boolean(gestureConfig.precisionModeEnabled); } catch(e){}
+                    }
+                } catch(e) { console.warn('load tuner failed', e); }
+            }
+
+            async function saveTuner(){
+                try {
+                    await fetch('/api/tuner', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gestureConfig) });
+                } catch(e) { console.warn('save tuner failed', e); }
+            }
+
+            // attempt load on startup
+            loadTuner().catch(()=>{});
+        }
+
+        // wire gesture debug toggle in Help panel
+        const gestureDebugToggle = document.getElementById('gesture-debug-toggle');
+        function setGestureDebugEnabled(enabled) {
+            try {
+                let panel = document.getElementById('gesture-debug');
+                if (!panel) return;
+                panel.style.display = enabled ? 'block' : 'none';
+                if (gestureDebugToggle) gestureDebugToggle.checked = !!enabled;
+            } catch(e){}
+        }
+        // default: enable
+        try { setGestureDebugEnabled(true); } catch(e){}
+        if (gestureDebugToggle) gestureDebugToggle.addEventListener('change', (ev)=>{ setGestureDebugEnabled(ev.target.checked); });
+
+        // -----------------------
+        // Test Mode: pixel overlays + 1Hz sampling log
+        // -----------------------
+        const testToggle = document.getElementById('test-mode-toggle');
+        let __testMode = false;
+        // pixel overlay to visualize raw pixel targets
+        let pixelOverlay = null;
+        function ensurePixelOverlay() {
+            if (pixelOverlay) return pixelOverlay;
+            const el = document.createElement('div');
+            el.id = 'pixel-overlay';
+            el.style.position = 'fixed'; el.style.left = '0'; el.style.top = '0'; el.style.width = '100%'; el.style.height = '100%'; el.style.pointerEvents = 'none'; el.style.zIndex = '99998';
+            document.body.appendChild(el);
+            pixelOverlay = el;
+            return el;
+        }
+
+        function enableTestMode(enable) {
+            __testMode = Boolean(enable);
+            try { if (testToggle) testToggle.checked = __testMode; } catch(e){}
+            if (__testMode) {
+                ensurePixelOverlay(); pixelOverlay.style.display = 'block';
+                showToast('Test mode enabled: pixel overlay + 1Hz sampling', 1800);
+            } else {
+                if (pixelOverlay) pixelOverlay.style.display = 'none';
+                showToast('Test mode disabled', 1200);
+            }
+            // toggle translate(-50%,-50%) on gesture cursor to test transform artifact
+            const gc = document.getElementById('gesture-cursor');
+            if (gc) {
+                if (__testMode) gc.style.transform = 'none';
+                else gc.style.transform = 'translate(-50%, -50%)';
+            }
+        }
+
+        if (testToggle) {
+            testToggle.addEventListener('change', (ev)=>{ enableTestMode(ev.target.checked); });
+        }
+
+        // -----------------------
+        // AI Chat widget wiring
+        // -----------------------
+        const aiChat = document.getElementById('ai-chat');
+        const aiMessages = document.getElementById('ai-messages');
+        const aiInput = document.getElementById('ai-input');
+        const aiSend = document.getElementById('ai-send');
+        const aiContext = document.getElementById('ai-chat-context');
+        let aiHistory = [];
+
+        function renderMessage(role, text) {
+            const el = document.createElement('div');
+            el.style.fontSize = '13px'; el.style.padding = '8px'; el.style.borderRadius = '8px'; el.style.maxWidth = '100%';
+            if (role === 'user') { el.style.alignSelf = 'flex-end'; el.style.background = 'linear-gradient(90deg,#00fef0,#00aaff)'; el.style.color = '#002'; el.innerText = text; }
+            else { el.style.alignSelf = 'flex-start'; el.style.background = 'rgba(0,0,0,0.45)'; el.style.color = '#dff'; el.innerText = text; }
+            aiMessages.appendChild(el);
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+        }
+
+        // Create an assistant bubble that supports streaming text and a skip button.
+        function createAssistantBubble() {
+            const container = document.createElement('div');
+            container.style.alignSelf = 'flex-start';
+            container.style.background = 'rgba(0,0,0,0.45)';
+            container.style.color = '#dff';
+            container.style.fontSize = '13px';
+            container.style.padding = '8px';
+            container.style.borderRadius = '8px';
+            container.style.maxWidth = '100%';
+            container.style.position = 'relative';
+
+            const content = document.createElement('div');
+            content.className = 'ai-stream-content';
+            content.style.whiteSpace = 'pre-wrap';
+            content.style.lineHeight = '1.35';
+            container.appendChild(content);
+
+            const controls = document.createElement('div');
+            controls.style.position = 'absolute'; controls.style.right = '8px'; controls.style.top = '6px';
+            const skip = document.createElement('button');
+            skip.type = 'button'; skip.innerText = 'Skip';
+            skip.style.background = 'transparent'; skip.style.border = '1px solid rgba(255,255,255,0.06)'; skip.style.color = 'var(--sci-fi-cyan)';
+            skip.style.padding = '2px 6px'; skip.style.fontSize = '11px'; skip.style.borderRadius = '6px'; skip.style.cursor = 'pointer';
+            controls.appendChild(skip);
+            container.appendChild(controls);
+
+            aiMessages.appendChild(container);
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+            return { container, content, skip };
+        }
+
+        // Simulate streaming/typing of a reply. Returns a promise that resolves when streaming finishes or is skipped.
+        function simulateStreamingReply(fullText, opts = {}) {
+            const { container, content, skip } = createAssistantBubble();
+            return new Promise((resolve) => {
+                let i = 0; let stopped = false;
+                // variable interval based on length (smaller for short replies)
+                const baseDelay = Math.max(10, Math.min(45, Math.floor(4000 / Math.max(1, fullText.length))));
+                const jitter = () => Math.floor((Math.random() * baseDelay) * 0.6);
+
+                const tick = () => {
+                    if (stopped) return;
+                    if (i >= fullText.length) {
+                        cleanup(); resolve(); return;
+                    }
+                    // append a small chunk to look natural
+                    const take = (Math.random() < 0.12) ? 3 : 1; // occasionally add a tiny burst
+                    content.textContent += fullText.slice(i, i + take);
+                    i += take;
+                    aiMessages.scrollTop = aiMessages.scrollHeight;
+                    scheduleNext();
+                };
+
+                let timer = null;
+                const scheduleNext = () => { timer = setTimeout(tick, baseDelay + jitter()); };
+
+                const cleanup = () => {
+                    stopped = true;
+                    if (timer) clearTimeout(timer);
+                    try { if (skip && skip.parentNode) skip.parentNode.removeChild(skip); } catch(e){}
+                    aiMessages.scrollTop = aiMessages.scrollHeight;
+                };
+
+                skip.addEventListener('click', () => {
+                    if (stopped) return;
+                    if (timer) clearTimeout(timer);
+                    content.textContent = fullText;
+                    cleanup();
+                    resolve();
+                });
+
+                // start
+                scheduleNext();
+            });
+        }
+
+        function setAiContextLabel(flightId) {
+            if (!aiContext) return;
+            if (flightId) aiContext.innerText = flightId; else { const sel = localStorage.getItem('selectedFlight'); aiContext.innerText = sel || 'None'; }
+        }
+
+        // show/hide chat depending on controlMode
+        function updateAiVisibility() {
+            try {
+                if (controlMode === 'gesture') { aiChat.style.display = 'none'; }
+                else { aiChat.style.display = 'flex'; setAiContextLabel(localStorage.getItem('selectedFlight')); }
+            } catch(e){}
+        }
+        // initial
+        updateAiVisibility();
+
+        // ensure visibility toggles when controlMode changes via setControlMode
+        const origSetControlMode = setControlMode;
+        setControlMode = function(mode) { origSetControlMode(mode); try { updateAiVisibility(); } catch(e){} };
+
+        async function sendAiMessage() {
+            const txt = (aiInput && aiInput.value || '').trim();
+            if (!txt) return;
+            renderMessage('user', txt);
+            aiInput.value = '';
+            // show typing indicator
+            const typing = document.createElement('div'); typing.innerText = 'Assistant is typing…'; typing.style.opacity = '0.7'; typing.style.fontSize = '13px'; typing.style.padding = '8px'; typing.style.borderRadius = '8px'; typing.style.background = 'rgba(0,0,0,0.28)'; aiMessages.appendChild(typing); aiMessages.scrollTop = aiMessages.scrollHeight;
+
+            const payload = { message: txt, flightId: localStorage.getItem('selectedFlight'), history: aiHistory };
+            try {
+                const r = await fetch('/api/ai-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const j = await r.json().catch(()=>null);
+                aiMessages.removeChild(typing);
+                if (!r.ok) {
+                    const detail = (j && (j.detail || j.error)) ? (j.detail || j.error) : `HTTP ${r.status}`;
+                    renderMessage('assistant', `Error: ${detail}`);
+                    return;
+                }
+                if (j && j.reply) {
+                    try {
+                        await simulateStreamingReply(j.reply);
+                    } catch(e) { /* ignore */ }
+                    aiHistory.push({ role: 'user', content: txt }); aiHistory.push({ role: 'assistant', content: j.reply });
+                } else {
+                    renderMessage('assistant', 'No reply from AI.');
+                }
+            } catch (err) {
+                try { aiMessages.removeChild(typing); } catch(e){}
+                renderMessage('assistant', `Failed to contact AI service: ${String(err)}`);
+            }
+        }
+
+        aiSend.addEventListener('click', (ev)=>{ ev.preventDefault(); sendAiMessage(); });
+        aiInput.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') { ev.preventDefault(); sendAiMessage(); } });
+
+        // update context label when flight selection changes
+        (function(){ const dd = document.getElementById('flight-dropdown'); if (dd) { dd.addEventListener('change', ()=>{ setAiContextLabel(dd.value); }); } })();
+
+        // 1Hz sampler that POSTs a compact payload to /api/gesture-log when test-mode active
+        let __samplerInterval = null;
+        function startSampler() {
+            if (__samplerInterval) return;
+            __samplerInterval = setInterval(async () => {
+                if (!__testMode) return;
+                try {
+                    // collect best-effort snapshot
+                    const snap = { gx: cursorSmooth.x, gy: cursorSmooth.y, smoothX: _smooth.x, smoothY: _smooth.y, lastTargetX: (gestureCursor && gestureCursor.dataset && gestureCursor.dataset._lastTargetX) ? Number(gestureCursor.dataset._lastTargetX) : null, lastTargetY: (gestureCursor && gestureCursor.dataset && gestureCursor.dataset._lastTargetY) ? Number(gestureCursor.dataset._lastTargetY) : null };
+                    await fetch('/api/gesture-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(snap) });
+                } catch(e) { console.warn('sampler post failed', e); }
+            }, 1000);
+        }
+        function stopSampler() { if (__samplerInterval) { clearInterval(__samplerInterval); __samplerInterval = null; } }
+
+        // auto-start sampler when user enables test mode via UI or keyboard
+        const originalToggleHandler = window.addEventListener;
+        // ensure sampler starts
+        setInterval(()=>{ if (__testMode) startSampler(); else stopSampler(); }, 800);
+
+        const tutorialSteps = [
+            { title: 'Mode & Controls', text: 'Press G to toggle Gesture mode. Use the mouse to orbit or enable gestures to interact hands-free. The mode badge shows current control.', el: '#mode-badge' },
+            { title: 'Calibration', text: 'Press C to start calibration. Hold your index finger in the reticle and pinch to click. Calibration maps your hand to screen coordinates.', el: '#cal-progress' },
+            { title: 'Inspect Components', text: 'Hover or pinch near glowing markers to reveal labels and telemetry. Click a label to focus the camera on that component.', el: null },
+            { title: 'Debug & Options', text: 'Press D to toggle debug axes. Use the Help panel for shortcuts and live telemetry.', el: '#help-panel' },
+            { title: 'Ready', text: 'You are ready — try pressing G and C to experiment. You can reopen this tour anytime from the Help panel.', el: '#mode-badge' }
+        ];
+
+        let tutorialIndex = 0;
+
+        function showTutorial(at = 0) {
+            if (localStorage.getItem(TUTORIAL_KEY)) return; // already seen
+            tutorialIndex = at;
+            updateTutorial();
+            tutorialOverlay.style.display = 'flex';
+            tutorialPointer.style.display = 'block';
+            gsap.fromTo('#tutorial-card', { y: -20, autoAlpha: 0 }, { y:0, autoAlpha:1, duration:0.5 });
+        }
+
+        function hideTutorial(markSeen = true) {
+            tutorialOverlay.style.display = 'none';
+            tutorialPointer.style.display = 'none';
+            gsap.to('#tutorial-card', { y:-10, autoAlpha:0, duration:0.35 });
+            if (markSeen) localStorage.setItem(TUTORIAL_KEY, '1');
+        }
+
+        function updateTutorial() {
+            const s = tutorialSteps[tutorialIndex];
+            document.querySelector('#tutorial-card h2').textContent = s.title;
+            tutorialText.textContent = s.text;
+            // position pointer near element if present
+            if (s.el) {
+                const target = document.querySelector(s.el);
+                if (target) {
+                    const r = target.getBoundingClientRect();
+                    const x = r.left + r.width/2;
+                    const y = r.top + r.height/2;
+                    gsap.to(tutorialPointer, { x, y, duration: 0.6, ease: 'power2.out' });
+                    highlightElement(target);
+                }
+            } else {
+                // center pointer over canvas reticle
+                const rect = renderer.domElement.getBoundingClientRect();
+                gsap.to(tutorialPointer, { x: rect.left + rect.width/2, y: rect.top + rect.height/2, duration:0.6 });
+                removeHighlights();
+            }
+            // update buttons
+            tutorialPrev.disabled = tutorialIndex === 0;
+            tutorialNext.textContent = (tutorialIndex === tutorialSteps.length -1) ? 'Finish' : 'Next';
+        }
+
+        function nextTutorial() {
+            if (tutorialIndex < tutorialSteps.length -1) {
+                tutorialIndex++;
+                updateTutorial();
+            } else {
+                hideTutorial(true);
+            }
+        }
+        function prevTutorial() { if (tutorialIndex>0) { tutorialIndex--; updateTutorial(); } }
+        function skipTutorial() { hideTutorial(true); }
+
+        // simple highlight via outline/glow
+        const _highlighted = new Set();
+        function highlightElement(el) {
+            removeHighlights();
+            el.classList.add('tutorial-highlight');
+            _highlighted.add(el);
+            // animate pulse
+            gsap.fromTo(el, { scale: 1 }, { scale:1.04, yoyo:true, repeat:3, duration:0.4 });
+        }
+        function removeHighlights() { _highlighted.forEach(e=> e.classList.remove('tutorial-highlight')); _highlighted.clear(); }
+
+        // add small CSS rule for highlight
+        const style = document.createElement('style');
+        style.textContent = '.tutorial-highlight{ box-shadow:0 8px 30px rgba(0,255,255,0.14); transform-origin:center center; }';
+        document.head.appendChild(style);
+
+        // Help panel collapse/expand wiring
+        (function(){
+            const hp = document.getElementById('help-panel');
+            const btn = document.getElementById('help-toggle-btn');
+            const header = hp.querySelector('.help-header');
+            const body = document.getElementById('help-body');
+            // measure content height for smooth animation
+            function measure() { body.style.height = 'auto'; const h = body.getBoundingClientRect().height; body.style.height = h + 'px'; return h; }
+            function collapse(animated = true) {
+                hp.classList.remove('expanded'); hp.classList.add('collapsed'); hp.setAttribute('aria-expanded','false');
+                if (window.gsap) { gsap.to(body, { height: 0, duration: animated ? 0.32 : 0, ease: 'power2.inOut' }); gsap.to(hp.querySelector('svg'), { rotate: 0, duration: 0.32, ease: 'power2.inOut' }); }
+                else { body.style.height = '0px'; hp.querySelector('svg').style.transform = 'rotate(0deg)'; }
+            }
+            function expand(animated = true) {
+                const h = measure(); hp.classList.remove('collapsed'); hp.classList.add('expanded'); hp.setAttribute('aria-expanded','true');
+                if (window.gsap) { gsap.to(body, { height: h, duration: animated ? 0.36 : 0, ease: 'power2.out', onComplete: ()=>{ body.style.height = 'auto'; } }); gsap.to(hp.querySelector('svg'), { rotate: 180, duration: 0.36, ease: 'power2.out' }); }
+                else { body.style.height = h + 'px'; hp.querySelector('svg').style.transform = 'rotate(180deg)'; }
+            }
+            // initialize collapsed by default (but allow user preference via localStorage)
+            try {
+                const pref = localStorage.getItem('helpPanelCollapsed');
+                if (pref === 'false') { expand(false); } else { collapse(false); }
+            } catch(e) { collapse(false); }
+            function toggle() { if (hp.classList.contains('collapsed')) { expand(); localStorage.setItem('helpPanelCollapsed','false'); } else { collapse(); localStorage.setItem('helpPanelCollapsed','true'); } }
+
+            header.addEventListener('click', (ev)=>{ ev.stopPropagation(); toggle(); });
+            header.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(); } });
+            if (btn) btn.addEventListener('click', (ev)=>{ ev.stopPropagation(); toggle(); });
+        })();
+
+        // wire buttons
+        tutorialNext.addEventListener('click', nextTutorial);
+        tutorialPrev.addEventListener('click', prevTutorial);
+        tutorialSkip.addEventListener('click', skipTutorial);
+
+        // keyboard support: Right/Left/Escape
+        window.addEventListener('keydown', (e)=>{
+            if (tutorialOverlay.style.display !== 'flex') return;
+            // avoid navigating tutorial while typing in an input
+            try { const active = document.activeElement; if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable) && e.key !== 'Escape') return; } catch(_) {}
+            if (e.key === 'ArrowRight') nextTutorial();
+            if (e.key === 'ArrowLeft') prevTutorial();
+            if (e.key === 'Escape') skipTutorial();
+        });
+
+        // attempt to auto-start tutorial on first load after scene is ready
+        window.addEventListener('load', ()=>{
+            setTimeout(()=>{
+                if (!localStorage.getItem(TUTORIAL_KEY)) showTutorial(0);
+            }, 700);
+        });
+
+        // reopen tour link
+        const reopen = document.getElementById('reopen-tour');
+        if (reopen) {
+            reopen.addEventListener('click', (ev)=>{ ev.preventDefault(); localStorage.removeItem(TUTORIAL_KEY); showTutorial(0); });
+        }
+
+        // pointer pulse animation while visible
+        gsap.to('#tutorial-pointer', { scale: 0.9, repeat: -1, yoyo: true, duration: 0.85, ease: 'sine.inOut' });
+
+        // follow mouse when tutorial overlay is active (for steps without specific element)
+        window.addEventListener('mousemove', (ev)=>{
+            if (tutorialOverlay.style.display !== 'flex') return;
+            const s = tutorialSteps[tutorialIndex];
+            if (!s.el) {
+                gsap.to(tutorialPointer, { x: ev.clientX, y: ev.clientY, duration: 0.18, ease: 'power2.out' });
+            }
+        });
+
+        const listNodesLink = document.getElementById('list-nodes');
+        if (listNodesLink) {
+            listNodesLink.addEventListener('click', (ev)=>{
+                ev.preventDefault();
+                if (!aircraftModel) { console.warn('Model not loaded yet'); return; }
+                const names = [];
+                aircraftModel.traverse((n) => { if (n.name) names.push(n.name); });
+                console.log('Model node names:', names);
+                alert('Model node names logged to console (' + names.length + ' entries)');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+{
+  "id": "A400-06",
+  "displayName": "A400 - Flight 06",
+  "components": [
+    {
+      "id": "engine",
+      "attachTo": "Object_9",
+      "displayName": "Port Outer Engine",
+      "status": "Warning",
+      "componentName": "Turboprop Engine #4",
+      "maintenanceDue": "25 days",
+      "priorityLevel": "MEDIUM",
+      "descriptionText": "Vibration sensors report minor resonance at cruise RPM. Recommend inspection.",
+      "markerOffset": [
+        -3000,
+        500,
+        1000
+      ],
+      "cameraOffset": [
+        -8000,
+        1000,
+        2000
+      ]
+    },
+    {
+      "id": "tail",
+      "attachTo": "Object_9",
+      "displayName": "Vertical Stabilizer",
+      "status": "Good",
+      "componentName": "Rudder Actuator",
+      "maintenanceDue": "180 days",
+      "priorityLevel": "LOW",
+      "descriptionText": "All hydraulic pressures and response times are nominal.",
+      "markerOffset": [
+        2000,
+        3000,
+        -6000
+      ],
+      "cameraOffset": [
+        5000,
+        4000,
+        -12000
+      ]
+    },
+    {
+      "id": "canopy",
+      "attachTo": "Object_11",
+      "displayName": "Cockpit Canopy",
+      "status": "Critical",
+      "componentName": "Canopy Seal",
+      "maintenanceDue": "Immediate",
+      "priorityLevel": "HIGH",
+      "descriptionText": "Pressure sensor indicates a potential micro-leak in the primary seal. Aircraft is non-mission capable.",
+      "markerOffset": [
+        0,
+        200,
+        0
+      ],
+      "cameraOffset": [
+        0,
+        2000,
+        8000
+      ]
+    },
+    {
+      "id": "nose",
+      "attachTo": "Object_9",
+      "displayName": "Nose Avionics",
+      "status": "Good",
+      "componentName": "Avionics Suite",
+      "maintenanceDue": "90 days",
+      "priorityLevel": "LOW",
+      "descriptionText": "Health nominal. Telemetry frequency nominal.",
+      "markerOffset": [
+        1200,
+        300,
+        4800
+      ],
+      "cameraOffset": [
+        0,
+        800,
+        6000
+      ]
+    },
+    {
+      "id": "left-wing",
+      "attachTo": "Object_9",
+      "displayName": "Left Wing",
+      "status": "Warning",
+      "componentName": "Aileron Actuator",
+      "maintenanceDue": "30 days",
+      "priorityLevel": "MEDIUM",
+      "descriptionText": "Minor play detected in aileron linkage.",
+      "markerOffset": [
+        -5200,
+        200,
+        0
+      ],
+      "cameraOffset": [
+        -9000,
+        1000,
+        0
+      ]
+    },
+    {
+      "id": "right-gear",
+      "attachTo": "Object_11",
+      "displayName": "Right Landing Gear",
+      "status": "Good",
+      "componentName": "Gear Hydraulics",
+      "maintenanceDue": "120 days",
+      "priorityLevel": "LOW",
+      "descriptionText": "Hydraulics at nominal pressure.",
+      "markerOffset": [
+        2000,
+        -1800,
+        -3000
+      ],
+      "cameraOffset": [
+        2000,
+        -1000,
+        -5000
+      ]
+    }
+  ]
+}

@@ -126,27 +126,6 @@ Troubleshooting
     - Verify `AZURE_OPENAI_DEPLOYMENT` matches the deployed model name in the Azure portal. Confirm `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_KEY` are correct.
     - Check server console output for proxied error details (server forwards Azure error responses into `ai.log`).
 
-- Git push rejected (non-fast-forward):
-    - This happens when the remote contains commits you don't have locally. Safe sequence:
-
-    ```bash
-    # 1) Save local changes if you have uncommitted work
-    git add -A
-    git commit -m "WIP: save local work"   # or 'git stash'
-
-    # 2) Integrate remote changes (rebase keeps a linear history)
-    git fetch origin
-    git pull --rebase origin main
-
-    # 3) Resolve any conflicts, then continue rebase
-    # git rebase --continue
-
-    # 4) Push
-    git push -u origin main
-    ```
-
-    I can also perform the safe stash/pull/rebase/push sequence for you if you want — tell me whether to auto-commit the current changes or stash them.
-
 Security and secrets
 
 --------------------
